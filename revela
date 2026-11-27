@@ -4,6 +4,7 @@
 # ./revela login
 set -eu
 cd "$(dirname "$0")"
+mkdir -p data
 cmd=${1:-}
 [ $# -gt 0 ] && shift
 case "$cmd" in
