@@ -27,13 +27,13 @@
   .top h1 { font-size: 17px; font-weight: 800; margin: 0; padding-left: 18px; border-left: 2px solid var(--ink); }
   .top .facts { color: var(--ink); }
   .top .pdf { color: var(--ink); text-underline-offset: .2em; }
-  .rebuild { margin-left: auto; display: inline-flex; align-items: center; gap: 8px; padding: 9px 16px; border-radius: 3px; background: var(--red); color: #fff; font-weight: 700;
+  .rebuild, .go { margin-left: auto; text-decoration: none; display: inline-flex; align-items: center; gap: 8px; padding: 9px 16px; border-radius: 3px; background: var(--red); color: #fff; font-weight: 700;
              box-shadow: 0 1px 1px rgb(0 0 0 / .2), 0 3px 8px rgb(120 20 0 / .25); transition: translate .2s var(--ease); }
-  .rebuild:hover:not(:disabled) { translate: 0 -1px; }
+  .rebuild:hover:not(:disabled), .go:hover { translate: 0 -1px; }
   .rebuild:disabled { background: none; color: var(--ink); box-shadow: inset 0 0 0 2px rgb(27 26 23 / .35); cursor: default; }
   .rebuild .n { display: inline-grid; place-items: center; min-width: 22px; height: 22px; padding: 0 6px; border-radius: 11px; background: #fff; color: var(--red); font-size: 13px; font-variant-numeric: tabular-nums; }
   body.busy { cursor: progress; }
-  body.busy .rebuild { opacity: .75; pointer-events: none; }
+  body.busy :is(.rebuild, .go) { opacity: .75; pointer-events: none; }
 
   .cols { display: grid; grid-template-columns: 1fr 340px; }
   main { padding: 36px 40px 80px; }
@@ -66,12 +66,26 @@
   .row button:hover { background: var(--ink); color: var(--paper); }
   .empty { margin-top: 18px; color: var(--muted); }
 
+  .develop { max-width: 1100px; margin: 12px auto 0; background: var(--paper); border: 2px solid var(--ink); }
+  .develop > header { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 4px 16px; padding: 16px 22px 12px; border-bottom: 2px solid var(--ink); }
+  .develop h2 { margin: 0; font-size: 24px; font-weight: 800; letter-spacing: -.01em; }
+  .develop .now { display: flex; align-items: center; gap: 18px; padding: 18px 22px; }
+  .develop p { margin: 0; max-width: 62ch; }
+  .shops { display: grid; grid-template-columns: 1fr 1fr; border-top: 2px solid var(--ink); }
+  .shops > div { padding: 16px 22px; }
+  .shops > div + div { border-left: 2px solid var(--ink); }
+  .shops h3 { margin: 0 0 6px; }
+  .develop .note { max-width: none; padding: 12px 22px; border-top: 1px solid var(--line); color: var(--muted); font-size: 13px; }
+
   @media (max-width: 900px) {
     .cols { grid-template-columns: 1fr; }
     aside { position: static; height: auto; border-left: 0; border-top: 2px solid var(--ink); }
     main { padding: 24px 16px 40px; }
     .top { flex-wrap: wrap; padding: 10px 16px; gap: 6px 14px; }
     .top .facts { order: 3; width: 100%; }
+    .develop .now { flex-wrap: wrap; }
+    .shops { grid-template-columns: 1fr; }
+    .shops > div + div { border-left: 0; border-top: 2px solid var(--ink); }
   }
 </style>
 <body>
@@ -81,7 +95,7 @@
   <span class="facts caps">{{ n_in }} photos · {{ book.spreads | length }} spreads · {{ book.format }} · {{ book.style }}</span>
   {% if pdf %}<a class="pdf caps" href="/a/{{ slug }}/book.pdf" target="_blank">PDF</a>{% endif %}
   {% set changes = removed | length + added | length %}
-  <button class="rebuild" onclick="post('rebuild')" {% if not changes %}disabled{% endif %}>
+  <button class="rebuild" onclick="post('rebuild', this, 'Rebuilding…')" {% if not changes %}disabled{% endif %}>
     {% if changes %}Rebuild book <span class="n" aria-label="{{ changes }} change{{ 's' if changes > 1 }}">{{ changes }}</span>{% else %}No changes{% endif %}</button>
 </header>
 <div class="cols">
@@ -104,6 +118,25 @@
     <figcaption class="caps">{{ loop.index * 2 - 1 }}–{{ loop.index * 2 }}</figcaption>
   </figure>
 {% endfor %}
+  <section class="develop" aria-labelledby="develop">
+    <header><h2 id="develop">Develop</h2><span class="caps">{{ book.spreads | length }} spreads · 300 DPI · {{ book.bleed }} mm bleed</span></header>
+    <div class="now">
+    {% if changes %}
+      <p>Rebuild the book first, so the files have your changes.</p>
+    {% elif pdf %}
+      <p>Developed. The zip has one JPEG per spread and book.pdf.</p>
+      <a class="go" href="/a/{{ slug }}/print.zip" download>Download {{ slug }}.zip</a>
+    {% else %}
+      <p>When the book is right, develop it. revela writes one JPEG per spread and book.pdf, and gives you both in a zip.</p>
+      <button class="go" onclick="post('release', this, 'Developing…')">Develop the book</button>
+    {% endif %}
+    </div>
+    <div class="shops">
+      <div><h3 class="caps">Photobook or layflat lab</h3><p>Send the JPEGs, one file per spread.</p></div>
+      <div><h3 class="caps">Digital or offset print shop</h3><p>Send book.pdf. Many shops ask for a PDF/X in CMYK, and this PDF is RGB. Ask if the shop converts the color.</p></div>
+    </div>
+    <p class="note">Before you send the files, read the spec sheet of the shop: the page size, the bleed, the safety margin, and if the cover goes in its own file.</p>
+  </section>
 </main>
 <aside>
   <h2>Left out</h2>
@@ -122,9 +155,9 @@
 </aside>
 </div>
 <script>
-  async function post(path) {
+  async function post(path, button, busy) {
     document.body.classList.add("busy");
-    if (path === "rebuild") document.querySelector(".rebuild").textContent = "Rebuilding…";
+    if (busy) button.textContent = busy;
     await fetch(`/a/{{ slug }}/${path}`, { method: "POST" });
     location.reload();
   }

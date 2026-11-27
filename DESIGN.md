@@ -167,6 +167,9 @@ Print-paper panel, 2px black border, fields split by 2px rules. Text input is a 
 ### Claim stub
 Below the form behind the perforation: the live command in monospace with a red `$`, then Copy (primary) and GitHub (ghost). On phones it moves up under the album field.
 
+### Develop panel
+Closes the app's spreads, built as the order form: paper, 2px border, 2px rules. One state line: "Rebuild the book first" while changes are pending, else the red "Develop the book", else the red "Download <album>.zip" when the PDF is current; then the two kinds of print shop side by side, then a muted note on the shop's spec sheet.
+
 ### Spread
 White double page with a darkened gutter (linear-gradient at the fold). In the app every photo slot is a button: hover reveals a black "Remove" chip; a removed slot fades to 14% grey with the red X over it and a paper chip "Removed · put back".
 
