@@ -130,6 +130,16 @@ def review(a):
     app = FastAPI()
     # Blocks DNS rebinding: an outside site cannot read the photos through the browser.
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=["127.0.0.1", "localhost"])
+
+    # Blocks CSRF: another site open in the browser cannot change the picks or start a render.
+    # A request without Origin does not come from a page of another site, for example curl.
+    @app.middleware("http")
+    async def same_origin(request: Request, call_next):
+        origin = request.headers.get("origin")
+        if request.method == "POST" and origin and origin.split("://", 1)[-1] != request.headers.get("host"):
+            return Response(status_code=403)
+        return await call_next(request)
+
     app.mount("/static", StaticFiles(directory=here / "static"), name="static")
 
     def album(s):
