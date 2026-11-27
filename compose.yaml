@@ -6,6 +6,7 @@ x-base: &base
   environment:
     HOME: /tmp
     TZ: ${TZ:-America/Sao_Paulo} # define o dia de cada pasta
+    BOOK: ${BOOK:-livro}
 
 services:
   sync:
@@ -14,11 +15,25 @@ services:
     volumes: [./data:/data]
     entrypoint: [revela-sync]
 
+  revela:
+    <<: *base
+    network_mode: none
+    volumes:
+      - ./data:/data
+      - ./data/selected:/photos:ro # o mesmo /photos que o fotobuch enxerga
+    entrypoint: [revela]
+
+  picker:
+    <<: *base
+    ports: ["127.0.0.1:8765:8765"]
+    volumes: [./data:/data]
+    entrypoint: [revela, picker]
+
   fotobuch:
     <<: *base
     network_mode: none
     working_dir: /books/${BOOK:-livro} # um diretório por livro
     volumes:
-      - ./data/photos:/photos:ro
+      - ./data/selected:/photos:ro
       - ./data/books:/books
     entrypoint: [fotobuch]

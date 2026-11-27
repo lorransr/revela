@@ -13,6 +13,10 @@ RUN curl -fsSL -o /tmp/fb.tar.gz \
  && tar xzf /tmp/fb.tar.gz -C /usr/local/bin fotobuch \
  && rm /tmp/fb.tar.gz
 
-RUN pip install --no-cache-dir icloudpd==1.34.0
+RUN pip install --no-cache-dir icloudpd==1.34.0 pillow==13.0.0 fastapi==0.165.0 uvicorn==0.54.0 jinja2==3.1.6
 
 COPY sync.sh /usr/local/bin/revela-sync
+COPY revela.py /app/
+COPY templates /app/templates
+COPY static /app/static
+RUN ln -s /app/revela.py /usr/local/bin/revela
