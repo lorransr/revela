@@ -1,0 +1,5 @@
+data/
+test-data/
+.env
+.claude/*
+!.claude/settings.json
