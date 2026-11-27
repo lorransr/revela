@@ -93,7 +93,7 @@ components:
 
 Every surface is the paper a photo lab hands back: a yellow envelope printed in two inks, a white order form with ruled fields, a perforated claim stub, prints with white borders. Paper objects behave like paper: loose ones tilt and cast soft warm shadows, printed ones lie flat behind a 2px rule.
 
-The landing page (`site/`) is the full envelope. The app (`templates/`) is the same lab, restrained: a grey desk under the spreads so the photos lead, yellow only in the top bar.
+The landing page (`docs/`) is the full envelope. The app (`templates/`) is the same lab, restrained: a grey desk under the spreads so the photos lead, yellow only in the top bar.
 
 **Key Characteristics:**
 - Drenched yellow ground, two inks (lab red, press black), white paper for anything you fill in or hold.

@@ -20,7 +20,7 @@ cp .env.example .env                       # your iCloud user
 
 On the review page, remove a photo, add one that revela left out, and rebuild the book:
 
-![The review page: a photo goes out, a left-out photo goes in, and the book rebuilds](site/review.gif)
+![The review page: a photo goes out, a left-out photo goes in, and the book rebuilds](docs/review.gif)
 
 A heart on a photo in the iPhone Photos app keeps that photo in the book.
 
