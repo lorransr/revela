@@ -51,7 +51,8 @@ def short(i):
 
 
 def reason_kind(why):
-    return why.split(" ")[0] if why.startswith("similar") else why
+    # The review page saves a removal with no reason.
+    return why.split(" ")[0] if why.startswith("similar") else why or "removed by you"
 
 
 def build(d, fmt, style, spreads):
