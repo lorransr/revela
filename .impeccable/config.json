@@ -1,0 +1,17 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "all-caps-body",
+        "value": "*",
+        "files": [
+          "templates/review.html"
+        ],
+        "createdAt": "2026-11-27T16:36:01.810Z",
+        "reason": "agent: false positive, the detector counts the Jinja source of the .facts label; the rendered label is about 45 characters (for example '36 PHOTOS · 15 SPREADS · SQUARE-30 · POCKET')"
+      }
+    ]
+  }
+}

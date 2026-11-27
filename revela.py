@@ -111,12 +111,17 @@ def release(a):
 
 def review(a):
     # Imported here: make and release do not need the server.
+    import os
+    import tempfile
+    import zipfile
+
     import uvicorn
     from fastapi import FastAPI, Request, Response
     from fastapi.responses import FileResponse, RedirectResponse
     from fastapi.staticfiles import StaticFiles
     from fastapi.templating import Jinja2Templates
     from PIL import Image, ImageOps
+    from starlette.background import BackgroundTask
     from starlette.middleware.trustedhost import TrustedHostMiddleware
 
     here = Path(__file__).resolve().parent
@@ -143,7 +148,7 @@ def review(a):
         d = album(s)
         if not d:
             return Response(status_code=404)
-        book, picks = load(d, "book.json"), load(d, "picks.json", {})
+        book, picks, pdf = load(d, "book.json"), load(d, "picks.json", {}), d / "print" / "book.pdf"
         in_book = {sl["id"] for sp in book["spreads"] for sl in sp["slots"]}
         removed = {i for i in in_book if picks.get(i, {}).get("pick") == "out"}
         added = [i for i, p in picks.items() if p["pick"] == "in" and i not in in_book]
@@ -154,7 +159,9 @@ def review(a):
         return templates.TemplateResponse(request, "review.html", {
             "slug": s, "book": book, "removed": removed, "added": added, "short": short,
             "groups": sorted(groups.items(), key=lambda g: -len(g[1])),
-            "n_in": len(in_book) - len(removed), "pdf": (d / "print" / "book.pdf").exists()})
+            # A rebuild or a make rewrites book.json, and the PDF of the old book goes stale.
+            "pdf": pdf.exists() and pdf.stat().st_mtime >= (d / "book.json").stat().st_mtime,
+            "n_in": len(in_book) - len(removed)})
 
     @app.post("/a/{s}/pick/{choice}/{photo:path}")
     def set_pick(s: str, choice: Literal["in", "out"], photo: str):
@@ -177,11 +184,33 @@ def review(a):
             build(d, book["format"], book["style"], book.get("target_spreads"))
         return Response(status_code=204)
 
+    @app.post("/a/{s}/release")
+    def release_book(s: str):
+        d = album(s)
+        if not d:
+            return Response(status_code=404)
+        with lock:
+            layout.render(load(d, "book.json"), d / "photos", d / "print")
+        return Response(status_code=204)
+
     @app.get("/a/{s}/book.pdf")
     def pdf(s: str):
         d = album(s)
         f = d / "print" / "book.pdf" if d else None
         return FileResponse(f, media_type="application/pdf") if f and f.exists() else Response(status_code=404)
+
+    @app.get("/a/{s}/print.zip")
+    def print_zip(s: str):
+        d = album(s)
+        if not d or not (d / "print" / "book.pdf").exists():
+            return Response(status_code=404)
+        # Made on each download and deleted after it: a copy in data/ would double the size of the print files.
+        tmp = tempfile.NamedTemporaryFile(suffix=".zip", delete=False)
+        with tmp, zipfile.ZipFile(tmp, "w") as z:  # stored: JPEG and the PDF do not compress further
+            for f in [*sorted((d / "print").glob("spread-*.jpg")), d / "print" / "book.pdf"]:
+                z.write(f, f"{s}/{f.name}")
+        return FileResponse(tmp.name, media_type="application/zip", filename=f"{s}.zip",
+                            background=BackgroundTask(os.unlink, tmp.name))
 
     @app.get("/img/{s}/{photo:path}")
     def image(s: str, photo: str, size: int = 1200):
