@@ -27,7 +27,7 @@ A heart on a photo in the iPhone Photos app keeps that photo in the book.
 ## Privacy
 
 - The `sync` service is the only one with network, and it only talks to Apple. The models come in at build time, and `revela` runs without network.
-- The `review` page listens on `127.0.0.1` only, accepts only a local `Host`, and loads nothing from outside.
+- The `review` page listens on `127.0.0.1` only, accepts only a local `Host`, refuses a change sent by another site, and loads nothing from outside.
 - `data/session` gives access to all your iCloud photos. Do not copy it off this machine.
 - An agent with a cloud LLM sends every photo or PDF that it opens to the provider. `AGENTS.md` tells it not to open them,
   and each agent has a lock on `data/` with a gap:
