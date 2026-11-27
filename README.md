@@ -1,34 +1,29 @@
 # revela
 
-Monta um fotolivro a partir de um álbum do iCloud sem tirar as fotos do seu computador.
-Usa o [icloudpd](https://github.com/icloud-photos-downloader/icloud_photos_downloader)
-para baixar e o [fotobuch](https://github.com/EddyXorb/fotobuch) para diagramar.
+Turns an iCloud album into a layflat photobook without any photo leaving your computer.
+[icloudpd](https://github.com/icloud-photos-downloader/icloud_photos_downloader) downloads the album.
+MediaPipe and CLIP score the photos on this machine, and revela picks and lays them out.
 
-## Uso
+## Use
+
+Ask your agent for a book from an album. Or run it yourself:
 
 ```bash
-cp .env.example .env                      # preencha
-mkdir -p data/photos data/selected data/books
-docker compose run --rm sync --auth-only  # login e 2FA; repita quando a Apple pedir
-
-docker compose run --rm sync              # baixa o álbum (e as fotos novas, nas próximas vezes)
-docker compose run --rm revela dupes      # sugere o que sai: parecidas, tremidas e escuras
-docker compose up picker                  # revise em http://127.0.0.1:8765: ← fora, → dentro, ou arraste
-
-docker compose run --rm -w /books fotobuch project new livro --width 297 --height 210   # só na primeira vez
-docker compose run --rm revela apply      # leva as escolhas para o livro
-
-alias fb='docker compose run --rm fotobuch'
-fb build                                  # preview: link "ver o álbum" no picker
-fb build release                          # PDF final, 300 DPI
+cp .env.example .env                       # your iCloud user
+./revela login                             # Apple login and 2FA; again when Apple asks
+./revela make "Beach 2026"                 # download, score, pick and lay out; prints the review link
+./revela release "Beach 2026"              # one JPEG per spread and book.pdf, 300 DPI, 3 mm bleed
 ```
 
-Os outros comandos estão na [documentação do fotobuch](https://eddyxorb.github.io/fotobuch).
+`make` takes `--format` (`square-20`, `square-25`, `square-30`, `landscape-a4`, `portrait-20x25`, or `WIDTHxHEIGHT` in mm),
+`--style` (`pocket`: full bleed, at most 2 photos a page; `scrapbook`: cream paper, wide margins) and `--spreads`.
 
-## Privacidade
+A heart on a photo in the iPhone Photos app keeps that photo in the book.
 
-- O `sync` acessa a rede só para falar com a Apple. O `revela` e o `fotobuch` rodam sem rede.
-- O `picker` precisa de rede para abrir a porta, mas só escuta em `127.0.0.1`, só aceita `Host` local e não carrega nada de fora: o htmx está em `static/`.
-- `data/session` dá acesso a todas as suas fotos do iCloud. Não copie esse diretório para fora da máquina.
-- Um agente com LLM na nuvem envia ao provedor cada foto ou PDF que abre.
-  `.claude/settings.json` bloqueia a ferramenta Read em `data/`, mas comandos de shell como `cat` não passam por essa regra.
+## Privacy
+
+- The `sync` service is the only one with network, and it only talks to Apple. The models come in at build time, and `revela` runs without network.
+- The `review` page listens on `127.0.0.1` only, accepts only a local `Host`, and loads nothing from outside.
+- `data/session` gives access to all your iCloud photos. Do not copy it off this machine.
+- An agent with a cloud LLM sends every photo or PDF that it opens to the provider.
+  `.claude/settings.json` blocks the Read tool in `data/`, but shell commands such as `cat` do not go through that rule.

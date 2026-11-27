@@ -1,20 +1,32 @@
 #!/bin/sh
+# revela-sync "Album name" downloads an iCloud album and the list of favorites.
+# revela-sync --auth-only logs in, with the 2FA code.
 set -eu
-: "${ICLOUD_USER:?defina ICLOUD_USER no .env}"
-: "${ALBUM:?defina ALBUM no .env}"
-
+: "${ICLOUD_USER:?set ICLOUD_USER in .env}"
 mkdir -p -m 700 /data/session
-icloudpd --username "$ICLOUD_USER" --cookie-directory /data/session \
-  --directory /data/icloud --album "$ALBUM" --size adjusted \
-  --folder-structure "{:%Y-%m-%d}" --skip-videos --skip-live-photos "$@"
+fetch() {
+  icloudpd --username "$ICLOUD_USER" --cookie-directory /data/session --size adjusted \
+    --skip-videos --skip-live-photos "$@"
+}
+case "${1:-}" in -*|"") fetch "$@"; exit ;; esac
 
-# O fotobuch ignora HEIC sem avisar. /data/photos espelha /data/icloud com HEIC
-# convertido para JPEG e o resto como hardlink, então o download continua incremental.
-cd /data/icloud
+album=$1
+shift
+dir=/data/albums/$(python3 -c 'import re, sys; print(re.sub(r"[^a-z0-9]+", "-", sys.argv[1].lower()).strip("-"))' "$album")
+mkdir -p "$dir/photos"
+fetch --directory "$dir/icloud" --album "$album" --folder-structure "{:%Y-%m-%d}" "$@"
+
+# An empty directory, because --only-print-filenames skips the files that it finds there.
+fetch --directory /tmp/favorites --album Favorites --only-print-filenames "$@" \
+  | sed 's|.*/||; s|\.[^.]*$||' > "$dir/favorites.txt"
+
+# revela skips HEIC. photos/ mirrors icloud/ with HEIC as JPEG and the rest as hardlinks,
+# so the next download stays incremental.
+cd "$dir/icloud"
 find . -type f ! -name '.*' | while read -r f; do
   case "$f" in
-    *.[hH][eE][iI][cC]) out="/data/photos/${f%.*}.jpg" ;;
-    *) out="/data/photos/$f" ;;
+    *.[hH][eE][iI][cC]) out="$dir/photos/${f%.*}.jpg" ;;
+    *) out="$dir/photos/$f" ;;
   esac
   [ -e "$out" ] && continue
   mkdir -p "$(dirname "$out")"
@@ -23,3 +35,4 @@ find . -type f ! -name '.*' | while read -r f; do
     *) ln "$f" "$out" ;;
   esac
 done
+echo "$(find "$dir/photos" -type f | wc -l) photos and $(wc -l < "$dir/favorites.txt") favorites in $dir"

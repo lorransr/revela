@@ -1,8 +1,13 @@
 # revela
 
-Nunca abra fotos nem PDFs de `data/`. Tudo o que você lê vai para o provedor do modelo, e as fotos são de uma criança. Trabalhe só com a saída de texto dos comandos.
+Never open photos or PDFs in `data/`. Whatever you read goes to the model provider, and the photos are of a child. Work only with the text output of the commands.
 
-- O `revela dupes` escolhe a melhor foto de cada grupo de parecidas. Se o relatório parecer errado, ajuste `--seconds`, `--distance`, `--blur` ou `--dark` e rode de novo.
-- O `dupes` não sobrescreve escolhas com `"by": "voce"`. Você também não deve sobrescrever: essas escolhas são da pessoa.
-- Depois de mudar escolhas, rode `revela apply` antes do `fotobuch build`.
-- Para ajustar o layout, peça à pessoa para olhar o preview (link "ver o álbum" no picker) e responder com endereços `página:slot`, que aparecem em cada foto.
+When the user asks for a book from an iCloud album:
+
+1. Run `./revela make "<album>"`. Add `--format`, `--style` or `--spreads` only when the user asks, for example "a 20x20 book" is `--format square-20`.
+2. If the sync stops at the Apple login, ask the user to type `! ./revela login`, then run `make` again.
+3. Give the user the summary and the review link. On that page the user removes and adds photos, then presses "Rebuild book".
+4. For a change in words, such as "fewer photos" or "the scrapbook style", run `make` again with new options. The scores are cached, so this takes seconds.
+5. When the user approves the book, run `./revela release "<album>"` and give the path of the PDF.
+
+Never change a pick with `"by": "user"` in `picks.json`. Those are the user's choices.

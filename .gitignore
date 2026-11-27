@@ -3,3 +3,4 @@ test-data/
 .env
 .claude/*
 !.claude/settings.json
+__pycache__/

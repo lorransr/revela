@@ -1,217 +1,299 @@
 #!/usr/bin/env python3
-"""Escolhe as fotos do livro sem tirar nenhuma da máquina.
+"""Turns an iCloud album into a photobook. No photo leaves this machine.
 
-  revela dupes   agrupa fotos quase iguais e sugere a melhor de cada grupo
-  revela picker  escolha no navegador e preview do livro em http://127.0.0.1:8765
-  revela apply   monta data/selected com as escolhas e sincroniza o livro
+  revela make ALBUM      score the photos, pick them and lay the book out
+  revela release ALBUM   render the book: one JPEG per spread and book.pdf
+  revela review          review page at http://127.0.0.1:8765
 """
 import argparse
 import json
-import os
+import math
 import re
 import statistics
-import subprocess
 import sys
 import threading
+from collections import Counter
 from io import BytesIO
 from pathlib import Path
 from typing import Literal
 
-from PIL import Image, ImageFilter, ImageOps, ImageStat
+import layout
 
 DATA = Path("/data")
-PHOTOS = DATA / "photos"
-SELECTED = DATA / "selected"
-PICKS = DATA / "picks.json"
-BOOK = DATA / "books" / os.environ.get("BOOK", "livro")
+ALBUMS = DATA / "albums"
 EXTS = {".jpg", ".jpeg", ".png", ".tif", ".tiff"}
-LAPLACE = ImageFilter.Kernel((3, 3), [0, 1, 0, 1, -4, 1, 0, 1, 0], scale=1, offset=128)
+URL = "http://127.0.0.1:8765"
 
 
-def photos():
-    # O icloudpd grava a data da foto no mtime, e o sync preserva esse mtime.
-    files = [p for p in PHOTOS.rglob("*") if p.suffix.lower() in EXTS and not p.name.startswith(".")]
-    return sorted(files, key=lambda p: (p.stat().st_mtime, str(p)))
+def slug(name):
+    return re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-")
 
 
-def pid(p):
-    return str(p.relative_to(PHOTOS))
+def load(d, name, default=None):
+    f = d / name
+    return json.loads(f.read_text()) if f.exists() else default
 
 
-def load_picks():
-    return json.loads(PICKS.read_text()) if PICKS.exists() else {}
+def save(d, name, data):
+    tmp = d / (name + ".tmp")
+    tmp.write_text(json.dumps(data, indent=1, ensure_ascii=False))
+    tmp.replace(d / name)
 
 
-def save_picks(picks):
-    tmp = PICKS.with_suffix(".tmp")
-    tmp.write_text(json.dumps(picks, indent=1, ensure_ascii=False))
-    tmp.replace(PICKS)
+def photos(d):
+    # icloudpd writes the capture time to the mtime, and the sync keeps it.
+    root = d / "photos"
+    files = [p for p in root.rglob("*") if p.suffix.lower() in EXTS and not p.name.startswith(".")]
+    return {str(p.relative_to(root)): p for p in sorted(files, key=lambda p: (p.stat().st_mtime, str(p)))}
 
 
-def measure(path):
-    with Image.open(path) as im:
-        im.draft("L", (1024, 1024))  # JPEG decodifica já reduzido: muito mais rápido
-        g = im.convert("L")
-    g.thumbnail((1024, 1024))
-    h = g.resize((9, 8)).tobytes()
-    hist = g.histogram()
-    return {
-        "hash": sum(1 << i for i in range(64) if h[i + i // 8] > h[i + i // 8 + 1]),
-        "sharp": ImageStat.Stat(g.filter(LAPLACE)).var[0],
-        "clipped": (sum(hist[:8]) + sum(hist[248:])) / sum(hist),
-        "mean": ImageStat.Stat(g).mean[0],
-    }
+def short(i):
+    return Path(i).stem
 
 
-def dupes(a):
-    items = []
-    for n, p in enumerate(photos(), 1):
-        items.append({"id": pid(p), "t": p.stat().st_mtime, **measure(p)})
-        if n % 100 == 0:
-            print(f"{n} fotos medidas", file=sys.stderr)
-    if not items:
-        sys.exit("Nenhuma foto em data/photos. Rode o sync primeiro.")
+def reason_kind(why):
+    return why.split(" ")[0] if why.startswith("similar") else why
 
-    groups = []
-    for prev, it in zip([None] + items, items):
-        similar = prev and it["t"] - prev["t"] <= a.seconds and bin(it["hash"] ^ prev["hash"]).count("1") <= a.distance
-        if similar:
-            groups[-1].append(it)
+
+def pick(d, scores, style, spreads):
+    """Auto picks: no defects, the best photo of each scene, people first. The user's picks always win."""
+    picks = load(d, "picks.json", {})
+    favs = set((d / "favorites.txt").read_text().split()) if (d / "favorites.txt").exists() else set()
+    for i in scores:
+        if short(i) in favs and picks.get(i, {}).get("by") != "user":
+            picks[i] = {"pick": "in", "by": "user", "why": "favorite"}
+    ids = list(scores)
+    med = statistics.median(s["sharp"] for s in scores.values()) or 1
+
+    def defect(s):
+        if s["mean"] < 35:  # before sharpness: a dark photo also has little contrast
+            return "too dark"
+        if s["sharp"] < 0.25 * med:
+            return "blurry"
+        if s["faces"] and s["faces"][0]["blink"] > 0.5:
+            return "eyes closed"
+        # ponytail: CLIP prompt, not calibrated; tune the threshold with real albums.
+        if s["faces"] and s["cry"] > 0.5:
+            return "crying"
+        return None
+
+    q = {i: s["aes"] + (s["faces"][0]["smile"] + 0.5 if s["faces"] else 0) for i, s in scores.items()}
+    scenes = []
+    for prev, i in zip([None] + ids, ids):
+        a, b = scores[i], scores.get(prev)
+        if b and a["t"] - b["t"] <= 120 and sum(x * y for x, y in zip(a["emb"], b["emb"])) >= 0.9:
+            scenes[-1].append(i)
         else:
-            groups.append([it])
+            scenes.append([i])
+    auto = {}
+    for scene in scenes:
+        ok = [i for i in scene if not defect(scores[i])]
+        best = max(ok, key=q.get) if ok else None
+        for i in scene:
+            why = defect(scores[i])
+            auto[i] = ("out", why) if why else ("in", "") if i == best else ("out", f"similar to {short(best)}")
+    plain = statistics.quantiles([s["aes"] for s in scores.values()], n=4)[2] if len(scores) > 1 else 0
+    for i, (p, _) in auto.items():
+        if p == "in" and not scores[i]["faces"] and scores[i]["aes"] < plain:
+            auto[i] = ("out", "no people, not striking")
 
-    med = statistics.median(i["sharp"] for i in items) or 1
-    picks = load_picks()
+    final = {i: (picks[i]["pick"], picks[i]["why"]) if picks.get(i, {}).get("by") == "user" else auto[i] for i in ids}
+    per = layout.STYLES[style]["per_spread"]
+    lo, hi = (spreads, spreads) if spreads else (10, 40)
+    lo_n, hi_n = round(lo * per), round(hi * per)
+    kept = [i for i in ids if final[i][0] == "in"]
+    if len(kept) > hi_n:  # too many: cut the weakest auto picks, but keep every day in the book
+        days = Counter(i.split("/")[0] for i in kept)
+        for i in sorted((i for i in kept if picks.get(i, {}).get("by") != "user"), key=q.get):
+            if len(kept) <= hi_n:
+                break
+            if days[i.split("/")[0]] > 1:
+                days[i.split("/")[0]] -= 1
+                kept.remove(i)
+                final[i] = ("out", f"cut to fit {hi} spreads")
+    if len(kept) < lo_n:  # too few: bring back the best of the similar and plain ones
+        back = [i for i in ids if final[i][0] == "out" and picks.get(i, {}).get("by") != "user"
+                and final[i][1].startswith(("similar", "no people"))]
+        for i in sorted(back, key=q.get, reverse=True)[:lo_n - len(kept)]:
+            final[i] = ("in", "")
+        kept = [i for i in ids if final[i][0] == "in"]
 
-    def suggest(it, pick, why=""):
-        if picks.get(it["id"], {}).get("by") != "voce":
-            picks[it["id"]] = {"pick": pick, "by": "auto", "why": why}
+    # One hero about every 4 spreads, the best photo of its stretch, and at least one per day.
+    heroes, chunk = set(), max(3, round(4 * per))
+    for day in dict.fromkeys(i.split("/")[0] for i in kept):
+        run = [i for i in kept if i.startswith(day + "/")]
+        for k in range(0, len(run), chunk):
+            part = run[k:k + chunk]
+            if len(part) >= 3:
+                heroes.add(max(part, key=lambda i: (bool(scores[i]["faces"]), q[i])))
 
-    for g in groups:
-        g.sort(key=lambda i: i["sharp"] * (1 - i["clipped"]), reverse=True)
-        best, rest = g[0], g[1:]
-        for it in rest:
-            suggest(it, "out", f"parecida com {best['id']}, menos nítida")
-        if best["mean"] < a.dark:  # antes da nitidez: foto escura também tem pouco contraste
-            suggest(best, "out", "escura")
-        elif best["sharp"] < a.blur * med:
-            suggest(best, "out", "tremida ou fora de foco")
-        else:
-            suggest(best, "in")
-        if rest:
-            print(f"grupo de {len(g)}: " + ", ".join(f"{i['id']} ({i['sharp'] / med:.2f}x)" for i in g))
-    save_picks(picks)
-    out = sum(picks[i["id"]]["pick"] == "out" for i in items)
-    print(f"\n{len(items)} fotos, {sum(len(g) > 1 for g in groups)} grupos de parecidas, "
-          f"{out} fora. Nitidez em múltiplos da mediana do álbum; a primeira de cada grupo fica.")
-
-
-def apply(a):
-    picks = load_picks()
-    keep = {pid(p): p for p in photos() if picks.get(pid(p), {}).get("pick") != "out"}
-    for f in sorted(SELECTED.rglob("*"), reverse=True):
-        if f.is_file() and str(f.relative_to(SELECTED)) not in keep:
-            f.unlink()
-        elif f.is_dir() and not any(f.iterdir()):
-            f.rmdir()
-    for i, p in keep.items():
-        dst = SELECTED / i
-        if not dst.exists():
-            dst.parent.mkdir(parents=True, exist_ok=True)
-            os.link(p, dst)
-    print(f"{len(keep)} fotos em data/selected")
-
-    yaml = BOOK / f"{BOOK.name}.yaml"
-    if not yaml.exists():
-        print(f"O livro {BOOK.name} ainda não existe. Crie o livro e rode apply de novo.")
-        return
-    # ponytail: lê os ids com regex em vez de um parser YAML; troque por PyYAML se o fotobuch mudar o formato.
-    in_book = re.findall(r"^\s*- id: ['\"]?(.+?)['\"]?$", yaml.read_text(), re.M)
-    gone = [i for i in in_book if i not in keep]
-    if gone:
-        # O remove compara a regex com o caminho de origem, não com o id.
-        subprocess.run(["fotobuch", "remove", *(f"^{re.escape('/photos/' + i)}$" for i in gone)], cwd=BOOK, check=True)
-    subprocess.run(["fotobuch", "add", "-r", "/photos"], cwd=BOOK, check=True)
+    for i in ids:
+        if picks.get(i, {}).get("by") != "user":
+            picks[i] = {"pick": final[i][0], "by": "auto", "why": final[i][1]}
+        picks[i]["hero"] = i in heroes
+    save(d, "picks.json", picks)
+    return [{"id": i, "w": scores[i]["w"], "h": scores[i]["h"], "faces": [f["box"] for f in scores[i]["faces"]],
+             "hero": i in heroes} for i in kept]
 
 
-def picker(a):
-    # Importa aqui: dupes e apply não precisam do servidor.
+def build(d, scores, fmt, style, spreads):
+    book = layout.layout(pick(d, scores, style, spreads), fmt, style)
+    book["target_spreads"] = spreads
+    save(d, "book.json", book)
+    return book
+
+
+def summary(d, name, book):
+    picks = load(d, "picks.json", {})
+    n_in = sum(len(s["slots"]) for s in book["spreads"])
+    outs = Counter(reason_kind(p["why"]) for p in picks.values() if p["pick"] == "out")
+    heroes = sum(p.get("hero", False) for p in picks.values())
+    print(f"{name}: {len(picks)} photos, {n_in} in the book, {len(book['spreads'])} spreads "
+          f"({book['format']}, {book['style']}), {heroes} heroes.")
+    if outs:
+        print("Left out: " + ", ".join(f"{n} {k}" for k, n in outs.most_common()) + ".")
+    print(f"Review: {URL}/a/{d.name}")
+
+
+def album_dir(name):
+    d = ALBUMS / slug(name)
+    if not d.is_dir():
+        known = ", ".join(sorted(p.name for p in ALBUMS.glob("*") if p.is_dir())) or "none"
+        sys.exit(f"No album {name!r} in {ALBUMS}. Known albums: {known}. The sync creates the album folder.")
+    return d
+
+
+def make(a):
+    from score import score_all
+
+    d = album_dir(a.album)
+    ps = photos(d)
+    if not ps:
+        sys.exit(f"No photos in {d / 'photos'}. Run the sync first.")
+    cache = load(d, "scores.json", {})
+    scores = score_all(ps, cache)
+    save(d, "scores.json", cache)
+    summary(d, a.album, build(d, scores, a.format, a.style, a.spreads))
+
+
+def release(a):
+    d = album_dir(a.album)
+    book = load(d, "book.json")
+    if not book:
+        sys.exit(f"No book for {a.album!r} yet. Run make first.")
+    print(layout.render(book, d / "photos", d / "print"))
+
+
+def review(a):
+    # Imported here: make and release do not need the server.
     import uvicorn
     from fastapi import FastAPI, Request, Response
-    from fastapi.responses import FileResponse, PlainTextResponse
-    from fastapi.staticfiles import StaticFiles
+    from fastapi.responses import FileResponse, RedirectResponse
     from fastapi.templating import Jinja2Templates
+    from PIL import Image, ImageOps
     from starlette.middleware.trustedhost import TrustedHostMiddleware
 
-    here = Path(__file__).resolve().parent
-    templates = Jinja2Templates(here / "templates")
+    templates = Jinja2Templates(Path(__file__).resolve().parent / "templates")
     lock = threading.Lock()
     app = FastAPI()
-    # Bloqueia DNS rebinding: um site externo não consegue ler as fotos pelo navegador.
+    # Blocks DNS rebinding: an outside site cannot read the photos through the browser.
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=["127.0.0.1", "localhost"])
-    app.mount("/static", StaticFiles(directory=here / "static"), name="static")
 
-    def card(request, template, i, fora):
-        picks = load_picks()
-        items = [{"id": pid(p), **picks.get(pid(p), {})} for p in photos()]
-        if fora:  # só as fotos que o dupes sugeriu tirar; "why" continua depois da sua escolha
-            items = [x for x in items if x.get("why")]
-        if i is None:
-            i = next((k for k, x in enumerate(items) if x.get("by") != "voce"), len(items))
-        i = max(0, min(i, len(items)))
-        ctx = {"i": i, "n": len(items), "fora": fora, "p": items[i] if i < len(items) else None,
-               "next": items[i + 1] if i + 1 < len(items) else None}
-        return templates.TemplateResponse(request, template, ctx)
+    def album(s):
+        d = ALBUMS / s
+        return d if re.fullmatch(r"[a-z0-9-]+", s) and (d / "book.json").exists() else None
 
     @app.get("/")
-    def index(request: Request, fora: bool = False):
-        return card(request, "index.html", None, fora)
+    def index(request: Request):
+        books = sorted(p.parent.name for p in ALBUMS.glob("*/book.json"))
+        if len(books) == 1:
+            return RedirectResponse(f"/a/{books[0]}")
+        return templates.TemplateResponse(request, "index.html", {"books": books})
 
-    @app.get("/card/{i}")
-    def get_card(request: Request, i: int, fora: bool = False):
-        return card(request, "card.html", i, fora)
-
-    @app.post("/pick/{pick}/{photo:path}")
-    def set_pick(request: Request, pick: Literal["in", "out"], photo: str, i: int, fora: bool = False):
-        with lock:
-            picks = load_picks()
-            picks[photo] = {**picks.get(photo, {}), "pick": pick, "by": "voce"}
-            save_picks(picks)
-        return card(request, "card.html", i + 1, fora)
-
-    @app.get("/img/{photo:path}")
-    def image(photo: str):
-        p = (PHOTOS / photo).resolve()
-        if not p.is_relative_to(PHOTOS.resolve()) or not p.is_file():
+    @app.get("/a/{s}")
+    def page(request: Request, s: str):
+        d = album(s)
+        if not d:
             return Response(status_code=404)
+        book, picks = load(d, "book.json"), load(d, "picks.json", {})
+        in_book = {sl["id"] for sp in book["spreads"] for sl in sp["slots"]}
+        removed = {i for i in in_book if picks.get(i, {}).get("pick") == "out"}
+        added = [i for i, p in picks.items() if p["pick"] == "in" and i not in in_book]
+        groups = {}
+        for i, p in picks.items():
+            if p["pick"] == "out" and i not in in_book:
+                groups.setdefault(reason_kind(p["why"]), []).append((i, p["why"]))
+        return templates.TemplateResponse(request, "review.html", {
+            "slug": s, "book": book, "removed": removed, "added": added, "short": short,
+            "groups": sorted(groups.items(), key=lambda g: -len(g[1])),
+            "n_in": len(in_book) - len(removed), "pdf": (d / "print" / "book.pdf").exists()})
+
+    @app.post("/a/{s}/pick/{choice}/{photo:path}")
+    def set_pick(s: str, choice: Literal["in", "out"], photo: str):
+        d = album(s)
+        with lock:
+            picks = load(d, "picks.json", {}) if d else {}
+            if photo not in picks:
+                return Response(status_code=404)
+            picks[photo].update(pick=choice, by="user")
+            save(d, "picks.json", picks)
+        return Response(status_code=204)
+
+    @app.post("/a/{s}/rebuild")
+    def rebuild(s: str):
+        d = album(s)
+        if not d:
+            return Response(status_code=404)
+        with lock:
+            book, scores = load(d, "book.json"), load(d, "scores.json", {})
+            ps = photos(d)
+            build(d, {i: scores[i] for i in ps if i in scores}, book["format"], book["style"], book.get("target_spreads"))
+        return Response(status_code=204)
+
+    @app.get("/a/{s}/book.pdf")
+    def pdf(s: str):
+        d = album(s)
+        f = d / "print" / "book.pdf" if d else None
+        return FileResponse(f, media_type="application/pdf") if f and f.exists() else Response(status_code=404)
+
+    @app.get("/img/{s}/{photo:path}")
+    def image(s: str, photo: str, size: int = 1200):
+        root = (ALBUMS / s / "photos").resolve()
+        p = (root / photo).resolve()
+        if not re.fullmatch(r"[a-z0-9-]+", s) or not p.is_relative_to(root) or not p.is_file():
+            return Response(status_code=404)
+        size = min(max(size, 100), 2000)
         with Image.open(p) as im:
-            im.draft("RGB", (1600, 1600))
+            im.draft("RGB", (size, size))
             img = ImageOps.exif_transpose(im).convert("RGB")
-        img.thumbnail((1600, 1600))
+        img.thumbnail((size, size))
         buf = BytesIO()
         img.save(buf, "JPEG", quality=85)
-        return Response(buf.getvalue(), media_type="image/jpeg")
+        return Response(buf.getvalue(), media_type="image/jpeg", headers={"Cache-Control": "max-age=3600"})
 
-    @app.get("/album")
-    def album():
-        pdf = BOOK / f"{BOOK.name}.pdf"
-        if not pdf.exists():
-            return PlainTextResponse("Sem preview. Rode fb build.", status_code=404)
-        return FileResponse(pdf, media_type="application/pdf")
-
-    print("Abra http://127.0.0.1:8765 no navegador. Ctrl+C para sair.", flush=True)
+    print(f"Open {URL} in the browser. Ctrl+C to stop.", flush=True)
     uvicorn.run(app, host="0.0.0.0", port=8765, log_level="warning")
+
+
+def book_format(v):
+    try:
+        w, h = layout.page_size(v)
+        assert 50 <= w <= 600 and 50 <= h <= 600
+    except (ValueError, AssertionError):
+        raise argparse.ArgumentTypeError(f"use one of {', '.join(layout.FORMATS)} or WIDTHxHEIGHT in mm, like 210x280")
+    return v
 
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = ap.add_subparsers(dest="cmd", required=True)
-    d = sub.add_parser("dupes", help="agrupa fotos parecidas e sugere a melhor")
-    d.add_argument("--seconds", type=float, default=10, help="intervalo máximo entre fotos do mesmo grupo")
-    d.add_argument("--distance", type=int, default=12, help="diferença máxima de hash (0-64) entre fotos parecidas")
-    d.add_argument("--blur", type=float, default=0.25, help="sai se a nitidez for menor que esta fração da mediana")
-    d.add_argument("--dark", type=float, default=35, help="sai se o brilho médio (0-255) for menor que isto")
-    sub.add_parser("picker", help="interface de escolha e preview do livro")
-    sub.add_parser("apply", help="aplica as escolhas ao livro")
+    m = sub.add_parser("make", help="score, pick and lay the book out")
+    m.add_argument("album", help="the iCloud album name")
+    m.add_argument("--format", type=book_format, default="square-30", help="page size: " + ", ".join(layout.FORMATS) + " or WxH in mm")
+    m.add_argument("--style", choices=list(layout.STYLES), default="pocket")
+    m.add_argument("--spreads", type=int, help="fixed number of spreads (a spread is two pages); default 10 to 40")
+    r = sub.add_parser("release", help="render one JPEG per spread and book.pdf")
+    r.add_argument("album")
+    sub.add_parser("review", help="review page in the browser")
     args = ap.parse_args()
-    {"dupes": dupes, "picker": picker, "apply": apply}[args.cmd](args)
+    {"make": make, "release": release, "review": review}[args.cmd](args)

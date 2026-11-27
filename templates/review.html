@@ -1,0 +1,92 @@
+{% set pw, ph = book.page %}
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>{{ slug }} · revela</title>
+<style>
+  :root { --ink: #1d1d1f; --muted: #6e6e73; --line: #e3e1dc; --accent: #2f5d50; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 15px/1.45 -apple-system, "Segoe UI", system-ui, sans-serif; color: var(--ink); }
+  button { font: inherit; cursor: pointer; border: 0; background: none; color: inherit; padding: 0; }
+  img { display: block; }
+  .top { position: sticky; top: 0; z-index: 5; display: flex; align-items: baseline; gap: 16px; padding: 14px 28px;
+         background: rgba(255,255,255,.92); backdrop-filter: blur(12px); border-bottom: 1px solid var(--line); }
+  .top h1 { font-size: 17px; font-weight: 600; margin: 0; }
+  .top .muted, .top a { color: var(--muted); font-size: 13px; }
+  .rebuild { margin-left: auto; padding: 7px 16px; border-radius: 8px; background: var(--accent); color: #fff; font-weight: 500; }
+  .rebuild:disabled { background: #d8d6d1; cursor: default; }
+  .cols { display: grid; grid-template-columns: 1fr 340px; }
+  main { padding: 36px 40px 80px; background: #f6f6f4; }
+  figure { margin: 0 auto 40px; max-width: 1100px; }
+  figcaption { margin-top: 8px; font-size: 12px; color: var(--muted); text-align: center; }
+  .spread { position: relative; overflow: hidden; box-shadow: 0 1px 2px rgba(0,0,0,.08), 0 10px 28px rgba(0,0,0,.08); }
+  .spread::after { content: ""; position: absolute; top: 0; bottom: 0; left: calc(50% - 14px); width: 28px; pointer-events: none;
+                   background: linear-gradient(90deg, transparent, rgba(0,0,0,.07) 50%, transparent); }
+  .slot { position: absolute; overflow: hidden; cursor: pointer; }
+  .slot img { position: absolute; max-width: none; }
+  .slot.removed img { opacity: .12; filter: grayscale(1); }
+  .slot.removed::after { content: "Removed · click to undo"; position: absolute; inset: 0; display: grid; place-items: center;
+                         font-size: 12px; color: var(--muted); }
+  .slot:not(.removed):hover::after { content: "Remove"; position: absolute; top: 8px; right: 8px; font-size: 12px;
+      padding: 3px 10px; border-radius: 99px; background: rgba(0,0,0,.65); color: #fff; }
+  aside { position: sticky; top: 53px; height: calc(100vh - 53px); overflow: auto; padding: 20px 22px 80px; border-left: 1px solid var(--line); }
+  aside h3 { margin: 0 0 4px; font-size: 15px; }
+  aside h4 { margin: 22px 0 8px; font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+  .row { display: grid; grid-template-columns: 64px 1fr auto; gap: 12px; align-items: center; padding: 6px 0; }
+  .row img { width: 64px; height: 48px; object-fit: cover; border-radius: 3px; }
+  .row b { display: block; font-size: 13px; font-weight: 500; }
+  .row small { color: var(--muted); font-size: 12px; }
+  .row button { font-size: 13px; padding: 4px 12px; border-radius: 99px; border: 1px solid var(--line); }
+  .row button:hover { border-color: var(--accent); color: var(--accent); }
+</style>
+<body>
+<header class="top">
+  <h1>{{ slug }}</h1>
+  <span class="muted">{{ n_in }} photos · {{ book.spreads | length }} spreads · {{ book.format }} · {{ book.style }}</span>
+  {% if pdf %}<a href="/a/{{ slug }}/book.pdf" target="_blank">PDF</a>{% endif %}
+  {% set changes = removed | length + added | length %}
+  <button class="rebuild" onclick="post('rebuild')" {% if not changes %}disabled{% endif %}>
+    Rebuild book{% if changes %} · {{ changes }} change{{ "s" if changes > 1 }}{% endif %}</button>
+</header>
+<div class="cols">
+<main>
+{% for sp in book.spreads %}
+  <figure>
+    <div class="spread" style="aspect-ratio: {{ 2 * pw }} / {{ ph }}; background: {{ book.paper }}">
+    {% for s in sp.slots %}
+      {% set cw, ch = s.crop[2] - s.crop[0], s.crop[3] - s.crop[1] %}
+      <div class="slot {{ 'removed' if s.id in removed }}"
+           style="left: {{ s.x / (2 * pw) * 100 }}%; top: {{ s.y / ph * 100 }}%; width: {{ s.w / (2 * pw) * 100 }}%; height: {{ s.h / ph * 100 }}%"
+           onclick="post('pick/{{ 'in' if s.id in removed else 'out' }}/{{ s.id | urlencode }}')">
+        <img src="/img/{{ slug }}/{{ s.id | urlencode }}" alt="" loading="lazy"
+             style="left: {{ -s.crop[0] / cw * 100 }}%; top: {{ -s.crop[1] / ch * 100 }}%; width: {{ 100 / cw }}%; height: {{ 100 / ch }}%">
+      </div>
+    {% endfor %}
+    </div>
+    <figcaption>{{ loop.index * 2 - 1 }}–{{ loop.index * 2 }}</figcaption>
+  </figure>
+{% endfor %}
+</main>
+<aside>
+  <h3>Left out</h3>
+  {% macro row(i, note, choice, label) %}
+    <div class="row"><img src="/img/{{ slug }}/{{ i | urlencode }}?size=200" alt="" loading="lazy">
+      <div><b>{{ short(i) }}</b><small>{{ note }}</small></div>
+      <button onclick="post('pick/{{ choice }}/{{ i | urlencode }}')">{{ label }}</button></div>
+  {% endmacro %}
+  {% if added %}<h4>Added · {{ added | length }}</h4>{% for i in added %}{{ row(i, "goes in on rebuild", "out", "Undo") }}{% endfor %}{% endif %}
+  {% for kind, items in groups %}
+    <h4>{{ kind }} · {{ items | length }}</h4>
+    {% for i, why in items %}{{ row(i, why, "in", "Add") }}{% endfor %}
+  {% endfor %}
+</aside>
+</div>
+<script>
+  async function post(path) {
+    await fetch(`/a/{{ slug }}/${path}`, { method: "POST" });
+    location.reload();
+  }
+</script>
+</body>
+</html>

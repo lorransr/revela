@@ -1,0 +1,16 @@
+#!/bin/sh
+# ./revela make "Album name" [--format square-30] [--style pocket] [--spreads N]
+# ./revela release "Album name"
+# ./revela login
+set -eu
+cd "$(dirname "$0")"
+cmd=${1:-}
+[ $# -gt 0 ] && shift
+case "$cmd" in
+  login) docker compose run --rm sync --auth-only ;;
+  make)
+    docker compose run --rm sync "$1"  # the only step with network, and it only talks to Apple
+    docker compose run --rm revela make "$@"
+    docker compose up -d review ;;
+  *) docker compose run --rm revela "$cmd" "$@" ;;
+esac
