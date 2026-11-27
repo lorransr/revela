@@ -25,5 +25,8 @@ A heart on a photo in the iPhone Photos app keeps that photo in the book.
 - The `sync` service is the only one with network, and it only talks to Apple. The models come in at build time, and `revela` runs without network.
 - The `review` page listens on `127.0.0.1` only, accepts only a local `Host`, and loads nothing from outside.
 - `data/session` gives access to all your iCloud photos. Do not copy it off this machine.
-- An agent with a cloud LLM sends every photo or PDF that it opens to the provider.
-  `.claude/settings.json` blocks the Read tool in `data/`, but shell commands such as `cat` do not go through that rule.
+- An agent with a cloud LLM sends every photo or PDF that it opens to the provider. `AGENTS.md` tells it not to open them,
+  and each agent has a lock on `data/` with a gap:
+  - Claude Code: `.claude/settings.json` blocks the Read tool, but not shell commands such as `cat`.
+  - Cursor: `.cursorignore` blocks the agent's file tools, but not its terminal.
+  - Codex: `.codex/config.toml` blocks sandboxed commands, but only in a trusted project and without a `sandbox_mode` in any config.

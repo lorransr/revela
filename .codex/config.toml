@@ -1,0 +1,8 @@
+# Codex reads this file only in a trusted project, and a sandbox_mode in any config turns it off.
+default_permissions = "revela"
+
+[permissions.revela]
+extends = ":workspace"
+
+[permissions.revela.filesystem.":workspace_roots"]
+"data" = "deny"
