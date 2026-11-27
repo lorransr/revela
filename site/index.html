@@ -1,0 +1,500 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>revela · your photos, developed into a book at home</title>
+<meta name="description" content="revela turns an iCloud album into a layflat photobook, and no photo leaves your computer.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='4' fill='%23f2b705'/%3E%3Crect y='20' width='32' height='5' fill='%23b5221a'/%3E%3Ctext x='16' y='18' font-family='Arial' font-weight='900' font-size='20' text-anchor='middle' fill='%231b1a17'%3Er%3C/text%3E%3C/svg%3E">
+<script>
+  // Portuguese for a pt browser, English otherwise; a choice on the toggle wins.
+  document.documentElement.lang = localStorage.getItem("lang") ||
+    (navigator.languages || [navigator.language]).some(l => /^pt/i.test(l)) && "pt" || "en";
+</script>
+<style>
+  @font-face { font-family: "Archivo"; font-weight: 100 900; font-display: swap; src: url("fonts/archivo-latin.woff2") format("woff2");
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+  @font-face { font-family: "Archivo"; font-weight: 100 900; font-display: swap; src: url("fonts/archivo-latin-ext.woff2") format("woff2");
+    unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF; }
+  @font-face { font-family: "Archivo Narrow"; font-weight: 400 700; font-display: swap; src: url("fonts/archivo-narrow-latin.woff2") format("woff2");
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+  @font-face { font-family: "Archivo Narrow"; font-weight: 400 700; font-display: swap; src: url("fonts/archivo-narrow-latin-ext.woff2") format("woff2");
+    unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF; }
+
+  :root {
+    --yellow: #f2b705; --yellow-deep: #d99a00; --red: #b5221a; --ink: #1b1a17; --ink-soft: #3d3524; --paper: #fbfbf8;
+    --narrow: "Archivo Narrow", "Arial Narrow", sans-serif;
+    --wrap: min(1240px, 100% - 2 * var(--gutter)); --gutter: clamp(18px, 4vw, 48px);
+    --ease: cubic-bezier(.16, 1, .3, 1);
+  }
+  html[lang="en"] [lang="pt"], html[lang="pt"] [lang="en"] { display: none !important; }
+  * { box-sizing: border-box; }
+  html { background: var(--yellow); scrollbar-color: var(--ink) var(--yellow-deep); }
+  body { margin: 0; font: 17px/1.5 "Archivo", system-ui, sans-serif; color: var(--ink); background: var(--yellow); caret-color: var(--red); }
+  ::selection { background: var(--ink); color: var(--yellow); }
+  a { color: inherit; text-underline-offset: .2em; text-decoration-thickness: 2px; }
+  :focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; }
+  img { display: block; max-width: 100%; }
+  code { font: 500 .95em/1.4 ui-monospace, "SF Mono", Menlo, monospace; }
+  h1, h2, h3 { text-wrap: balance; margin: 0; }
+  p { margin: 0; }
+  .wrap { width: var(--wrap); margin-inline: auto; }
+  .caps { font-family: var(--narrow); font-weight: 700; text-transform: uppercase; letter-spacing: .06em; font-size: 14px; }
+
+  /* The open mouth of the envelope: the back panel, with prints standing in it. */
+  .mouth { position: relative; height: clamp(150px, 22vw, 230px); background: var(--yellow-deep); }
+  .mouth nav { position: relative; z-index: 3; display: flex; gap: clamp(14px, 2.4vw, 32px); align-items: center; justify-content: flex-end;
+               width: var(--wrap); margin-inline: auto; padding-top: 18px; }
+  .mouth nav a { text-decoration: none; }
+  .mouth nav a:hover { text-decoration: underline; }
+  .lang { display: inline-flex; border: 2px solid var(--ink); border-radius: 3px; }
+  .lang button { font: inherit; border: 0; padding: 3px 9px; background: none; color: var(--ink); cursor: pointer; }
+  html[lang="en"] .lang [data-set="en"], html[lang="pt"] .lang [data-set="pt"] { background: var(--ink); color: var(--yellow); }
+  .prints { position: absolute; inset: 0; width: var(--wrap); margin-inline: auto; pointer-events: none; }
+  .print { position: absolute; width: clamp(150px, 21vw, 280px); padding: 9px 9px 9px; background: var(--paper);
+           box-shadow: 0 2px 3px rgb(0 0 0 / .18), 0 10px 24px rgb(60 40 0 / .22); }
+  .print img { aspect-ratio: 3 / 2; object-fit: cover; width: 100%; height: auto; }
+  .print:nth-child(1) { left: 0; rotate: -5deg; bottom: -62px; }
+  .print:nth-child(2) { left: 18%; rotate: 2deg; bottom: -48px; }
+  .print:nth-child(3) { left: 36%; rotate: -1.5deg; bottom: -80px; }
+  @supports (animation-timeline: scroll()) {
+    @media (prefers-reduced-motion: no-preference) {
+      .print { animation: rise linear both; animation-timeline: scroll(root); animation-range: 0 420px; }
+      .print:nth-child(2) { animation-range: 0 360px; }
+      .print:nth-child(3) { animation-range: 0 480px; }
+      @keyframes rise { to { translate: 0 -70px; } }
+    }
+  }
+
+  /* The front panel covers the prints. */
+  .front { position: relative; z-index: 2; background: var(--yellow); box-shadow: 0 -6px 14px rgb(80 50 0 / .28); padding-bottom: 56px; }
+  .front::before { content: ""; display: block; height: 14px; background: var(--red); }
+  .masthead { display: grid; grid-template-columns: auto 1fr; gap: 12px clamp(24px, 4vw, 56px); align-items: end; padding-top: clamp(20px, 3vw, 36px); }
+  .mark { font-weight: 900; font-size: clamp(4.5rem, 13vw, 10.5rem); line-height: .78; letter-spacing: -.045em; color: var(--red); margin-left: -.04em; }
+  .masthead h1 { font-family: var(--narrow); font-weight: 700; text-transform: uppercase; font-size: clamp(1.7rem, 3.4vw, 3rem); line-height: 1; letter-spacing: 0; max-width: 24ch; padding-bottom: .15em; }
+  .lab { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 6px 22px; border-top: 2px solid var(--ink); border-bottom: 2px solid var(--ink); padding: 7px 0; margin-top: 14px; }
+  .lab > span { display: inline-grid; grid-template-columns: 6px auto; gap: 12px; align-items: center; }
+  .lab > span::before { content: ""; width: 6px; height: 6px; background: var(--red); }
+
+  /* The order form printed on the envelope. */
+  .order { margin-top: 26px; background: var(--paper); border: 2px solid var(--ink); }
+  .fields { display: grid; grid-template-columns: minmax(200px, 1fr) 2.1fr 1.6fr; }
+  .field { border: 0; margin: 0; padding: 16px 20px 20px; min-width: 0; }
+  .field + .field { border-left: 2px solid var(--ink); }
+  .field legend, .field > label:first-child { float: left; width: 100%; padding: 0; margin-bottom: 12px; }
+  .field legend + *, .field > label:first-child + * { clear: both; }
+  .album { width: 100%; font: 600 22px/1.2 "Archivo", sans-serif; color: var(--ink); background: none; border: 0; border-bottom: 2px solid var(--ink);
+           padding: 4px 0 6px; border-radius: 0; }
+  .album:focus { outline: none; border-bottom-color: var(--red); }
+  .ticks { display: flex; flex-wrap: wrap; gap: 10px 18px; }
+  .tick { display: inline-flex; align-items: center; gap: 9px; cursor: pointer; font-family: var(--narrow); font-weight: 600; font-size: 17px; line-height: 1.15; }
+  .tick small { display: block; font-weight: 400; font-size: 14px; color: var(--ink-soft); }
+  .tick input { appearance: none; flex: none; width: 24px; height: 24px; margin: 0; border: 2px solid var(--ink); background: var(--paper); cursor: pointer; display: grid; place-items: center; }
+  .tick input::after { content: ""; width: 26px; height: 26px; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 26 26'%3E%3Cpath d='M4 5c6 5 11 10 18 17M21 4C15 10 10 15 5 22' fill='none' stroke='%23b5221a' stroke-width='3.2' stroke-linecap='round'/%3E%3C/svg%3E") center / contain no-repeat;
+                      clip-path: inset(0 100% 0 0); transition: clip-path .35s var(--ease); }
+  .tick input:checked::after { clip-path: inset(0 0 0 0); }
+  .tick input:focus-visible { outline: 3px solid var(--red); outline-offset: 2px; }
+  .finish .ticks { flex-direction: column; gap: 12px; }
+
+  /* The claim stub, behind a perforation. */
+  .stub { position: relative; display: grid; grid-template-columns: 1fr auto; gap: 14px 28px; align-items: center; padding: 20px; border-top: 2px dashed var(--ink); }
+  .stub::before, .stub::after { content: ""; position: absolute; top: -13px; width: 24px; height: 24px; border-radius: 50%; background: var(--yellow); border: 2px solid var(--ink); }
+  .stub::before { left: -13px; clip-path: inset(0 0 0 50%); }
+  .stub::after { right: -13px; clip-path: inset(0 50% 0 0); }
+  .cmd { display: block; font-size: clamp(15px, 1.7vw, 20px); overflow-wrap: anywhere; margin-top: 6px; }
+  .cmd::before { content: "$ "; color: var(--red); }
+  .actions { display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: center; }
+  .btn { display: inline-flex; align-items: center; gap: 10px; font: 700 17px/1 "Archivo", sans-serif; padding: 15px 22px; border-radius: 3px;
+         border: 2px solid var(--red); background: var(--red); color: #fff; cursor: pointer; text-decoration: none;
+         box-shadow: 0 1px 1px rgb(0 0 0 / .2), 0 4px 10px rgb(120 20 0 / .22); transition: translate .2s var(--ease), box-shadow .2s var(--ease); }
+  .btn:hover { translate: 0 -1px; box-shadow: 0 2px 2px rgb(0 0 0 / .2), 0 8px 18px rgb(120 20 0 / .28); }
+  .btn:active { translate: 0 1px; }
+  .btn.ghost { background: none; border-color: var(--ink); color: var(--ink); box-shadow: none; }
+  .btn svg { width: 18px; height: 18px; flex: none; }
+  .agent { grid-column: 1 / -1; color: var(--ink-soft); font-size: 15px; }
+
+  /* Below the fold. */
+  section { padding-block: clamp(72px, 9vw, 128px); }
+  h2 { font-weight: 900; font-size: clamp(2.2rem, 5.2vw, 4.4rem); line-height: .98; letter-spacing: -.03em; max-width: 16ch; }
+  .lede { font-size: clamp(18px, 1.6vw, 21px); max-width: 58ch; margin-top: 22px; }
+
+  .book { border-top: 2px solid var(--ink); }
+  .book-grid { display: grid; grid-template-columns: 1fr 300px; gap: clamp(28px, 4vw, 56px); margin-top: 48px; align-items: start; }
+  .spread { position: relative; display: grid; grid-template-columns: 1fr 1fr; aspect-ratio: 2 / 1; background: #fff; gap: 0;
+            box-shadow: 0 2px 4px rgb(0 0 0 / .14), 0 24px 48px rgb(70 45 0 / .28); }
+  .spread::after { content: ""; position: absolute; inset: 0 calc(50% - 22px); background: linear-gradient(90deg, transparent, rgb(0 0 0 / .16) 50%, transparent); pointer-events: none; }
+  .spread img { width: 100%; height: 100%; object-fit: cover; }
+  .page-r { display: grid; grid-template-rows: 1fr 1fr; min-height: 0; }
+  .page-r img { min-height: 0; }
+  .slug { margin-top: 14px; font-family: var(--narrow); font-size: 14px; color: var(--ink-soft); }
+  .slip { background: var(--paper); padding: 20px 20px 18px; font-family: var(--narrow); font-size: 16px; rotate: 1.2deg;
+          box-shadow: 0 1px 2px rgb(0 0 0 / .16), 0 10px 24px rgb(70 45 0 / .2); }
+  .slip h3 { font: inherit; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; display: flex; justify-content: space-between; border-bottom: 2px solid var(--ink); padding-bottom: 8px; }
+  .slip h3 span:last-child { color: var(--red); }
+  .slip dl { margin: 10px 0 0; }
+  .slip div { display: flex; gap: 6px; padding: 4px 0; }
+  .slip dt { flex: none; }
+  .slip div::after { content: ""; order: 1; flex: 1; border-bottom: 2px dotted rgb(27 26 23 / .35); translate: 0 -5px; }
+  .slip dd { order: 2; margin: 0; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .slip .total { border-top: 2px solid var(--ink); margin-top: 8px; padding-top: 10px; color: var(--red); }
+  .slip .total::after { border-color: rgb(181 34 26 / .4); }
+  .slip p { margin-top: 12px; font-size: 13px; color: var(--ink-soft); }
+  .rules { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 22px 40px; margin-top: 56px; }
+  .rules p { border-top: 2px solid var(--ink); padding-top: 12px; }
+  .rules b { display: block; font-size: 19px; margin-bottom: 4px; }
+
+  .steps { background: var(--ink); color: var(--yellow); }
+  .steps ::selection { background: var(--yellow); color: var(--ink); }
+  .steps h2 { color: var(--paper); }
+  .steps .lede { color: rgb(251 251 248 / .78); }
+  .steps ol { list-style: none; padding: 0; margin: 56px 0 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0; counter-reset: s; }
+  .steps li { counter-increment: s; padding: 0 22px 0 0; border-top: 2px solid var(--yellow); padding-top: 16px; }
+  .steps li + li { padding-left: 22px; border-left: 1px dashed rgb(242 183 5 / .45); }
+  .steps li::before { content: counter(s); display: block; font-weight: 900; font-size: 64px; line-height: .9; color: var(--yellow); margin-bottom: 14px; }
+  .steps h3 { font-size: 21px; color: var(--paper); margin-bottom: 8px; }
+  .steps p { color: rgb(251 251 248 / .78); font-size: 16px; }
+  .steps code { display: inline-block; margin-top: 12px; color: var(--yellow); font-size: 14px; }
+  .needs { margin-top: 56px; color: rgb(251 251 248 / .78); font-size: 16px; max-width: 70ch; }
+
+  .agent-s .wrap { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: clamp(32px, 5vw, 72px); align-items: start; }
+  .agent-s ul { list-style: none; padding: 0; margin: 28px 0 0; border-top: 2px solid var(--ink); }
+  .agent-s li { padding: 12px 0; border-bottom: 2px solid var(--ink); }
+  .agent-s li b { display: block; }
+  .agent-s .limit { margin-top: 18px; font-size: 15px; color: var(--ink-soft); }
+  .talk { background: var(--paper); padding: 24px 24px 20px; rotate: -.8deg; box-shadow: 0 1px 2px rgb(0 0 0 / .16), 0 14px 30px rgb(70 45 0 / .22); }
+  .talk .who { display: block; margin-bottom: 6px; }
+  .talk .who.ag { color: var(--red); }
+  .talk p + .who { margin-top: 22px; }
+  .talk p { font-size: 19px; font-weight: 600; line-height: 1.4; }
+  .talk q { quotes: "“" "”"; }
+  .talk pre { margin: 10px 0 0; padding: 14px 16px; background: var(--ink); color: var(--paper); overflow-x: auto; white-space: pre-wrap; font: 500 13.5px/1.55 ui-monospace, "SF Mono", Menlo, monospace; }
+  .talk pre .c { color: var(--yellow); }
+  .talk .note { margin-top: 14px; font-family: var(--narrow); font-size: 14px; color: var(--ink-soft); }
+  .sealed { background: var(--yellow-deep); padding-top: 0; }
+  .flapbox { position: relative; height: clamp(150px, 20vw, 280px); margin-bottom: clamp(110px, 12vw, 140px); filter: drop-shadow(0 6px 8px rgb(80 50 0 / .3)); }
+  .flap { position: absolute; inset: 0; background: var(--yellow); clip-path: polygon(0 0, 100% 0, 50% 100%); }
+  .sealed .wrap { position: relative; display: grid; justify-items: center; text-align: center; }
+  .seal { width: clamp(150px, 16vw, 190px); aspect-ratio: 1; border-radius: 50%; display: grid; place-content: center; text-align: center; gap: 2px;
+          background: var(--red); color: #fff; box-shadow: 0 2px 3px rgb(0 0 0 / .25), 0 12px 26px rgb(120 20 0 / .3), inset 0 0 0 7px var(--red), inset 0 0 0 9px rgb(255 255 255 / .55);
+          position: absolute; left: 50%; bottom: 0; translate: -50% 50%; rotate: -8deg; }
+  .seal b { font-size: clamp(40px, 4.6vw, 54px); font-weight: 900; line-height: .9; letter-spacing: -.03em; }
+  .seal span { font-family: var(--narrow); font-weight: 700; text-transform: uppercase; letter-spacing: .08em; font-size: 13px; }
+  .sealed h2 { max-width: 14ch; }
+  .facts { list-style: none; padding: 0; margin: 52px 0 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0; max-width: 1000px; text-align: left;
+           background: var(--paper); border: 2px solid var(--ink); }
+  .facts li { padding: 20px 22px; border-bottom: 2px solid var(--ink); }
+  .facts li:nth-child(odd) { border-right: 2px solid var(--ink); }
+  .facts li:nth-last-child(-n + 2) { border-bottom: 0; }
+  .facts b { display: block; margin-bottom: 4px; }
+  .facts p { font-size: 16px; color: var(--ink-soft); }
+
+  .close { text-align: left; }
+  .close .actions { margin-top: 36px; }
+  footer { border-top: 2px solid var(--ink); padding: 28px 0 40px; font-size: 14px; color: var(--ink-soft); }
+  footer p + p { margin-top: 6px; }
+
+  @media (max-width: 980px) {
+    .fields { grid-template-columns: 1fr 1fr; }
+    .field.album-f { grid-column: 1 / -1; border-bottom: 2px solid var(--ink); }
+    .field.fmt { border-left: 0; }
+    .book-grid { grid-template-columns: 1fr; }
+    .slip { max-width: 360px; }
+    .steps ol { grid-template-columns: 1fr 1fr; gap: 40px 0; }
+    .steps li:nth-child(3) { padding-left: 0; border-left: 0; }
+  }
+  @media (max-width: 640px) {
+    body { font-size: 16px; }
+    .mouth nav .hide-s { display: none; }
+    .print { width: 36vw; padding: 6px; }
+    .print:nth-child(1) { bottom: -34px; }
+    .print:nth-child(2) { left: 31%; bottom: -24px; }
+    .print:nth-child(3) { left: 62%; bottom: -44px; }
+    .lab { display: none; }
+    .mouth { height: 124px; }
+    .order { display: flex; flex-direction: column; }
+    .fields { display: contents; }
+    .field.album-f { order: 1; }
+    .stub { order: 2; border-bottom: 2px solid var(--ink); }
+    .field.fmt { order: 3; border-top: 0; }
+    .field.finish { order: 4; }
+    .masthead { grid-template-columns: 1fr; }
+    .fields { grid-template-columns: 1fr; }
+    .field + .field { border-left: 0; border-top: 2px solid var(--ink); }
+    .field.album-f { border-bottom: 0; }
+    .stub { grid-template-columns: 1fr; }
+    .rules, .facts, .agent-s .wrap { grid-template-columns: 1fr; }
+    .facts li:nth-child(odd) { border-right: 0; }
+    .facts li:nth-last-child(2) { border-bottom: 2px solid var(--ink); }
+    .steps ol { grid-template-columns: 1fr; }
+    .steps li + li { padding-left: 0; border-left: 0; }
+    .spread { aspect-ratio: 4 / 3; }
+  }
+</style>
+</head>
+<body>
+
+<header class="mouth">
+  <nav class="caps" aria-label="Main">
+    <a class="hide-s" href="#book"><span lang="en">The book</span><span lang="pt">O livro</span></a>
+    <a class="hide-s" href="#how"><span lang="en">How it works</span><span lang="pt">Como funciona</span></a>
+    <a href="#sealed"><span lang="en">Privacy</span><span lang="pt">Privacidade</span></a>
+    <a href="https://github.com/lorransr/revela">GitHub</a>
+    <span class="lang" role="group" aria-label="Language"><button type="button" data-set="en">EN</button><button type="button" data-set="pt">PT</button></span>
+  </nav>
+  <div class="prints" aria-hidden="true">
+    <figure class="print" style="margin:0"><img src="photos/kiss.webp" alt="" width="1400" height="1972" style="object-position: 50% 22%"></figure>
+    <figure class="print" style="margin:0"><img src="photos/newborn.webp" alt="" width="1400" height="934"></figure>
+    <figure class="print" style="margin:0"><img src="photos/grandma.webp" alt="" width="1400" height="937"></figure>
+  </div>
+</header>
+
+<main>
+<div class="front">
+  <div class="wrap">
+    <div class="masthead">
+      <p class="mark" aria-label="revela">revela</p>
+      <h1>
+        <span lang="en">Your iCloud album, developed into a layflat book. On your own computer.</span>
+        <span lang="pt">Seu álbum do iCloud, revelado num livro layflat. No seu próprio computador.</span>
+      </h1>
+      <p class="lab caps">
+        <span lang="en">Photo lab at home</span><span lang="pt">Laboratório em casa</span>
+        <span lang="en">Pick · lay out · print-ready PDF</span><span lang="pt">Escolhe · diagrama · PDF pronto para gráfica</span>
+        <span lang="en">No photo leaves your computer</span><span lang="pt">Nenhuma foto sai do seu computador</span>
+      </p>
+    </div>
+
+    <form class="order" id="order" onsubmit="return false">
+      <div class="fields">
+        <div class="field album-f">
+          <label class="caps" for="album"><span lang="en">Album in iCloud</span><span lang="pt">Álbum no iCloud</span></label>
+          <input class="album" id="album" name="album" autocomplete="off" spellcheck="false" value="Beach 2026">
+        </div>
+        <fieldset class="field fmt">
+          <legend class="caps"><span lang="en">Book size</span><span lang="pt">Tamanho do livro</span></legend>
+          <div class="ticks">
+            <label class="tick"><input type="radio" name="format" value="square-20">20 × 20 cm</label>
+            <label class="tick"><input type="radio" name="format" value="square-25">25 × 25 cm</label>
+            <label class="tick"><input type="radio" name="format" value="square-30" checked>30 × 30 cm</label>
+            <label class="tick"><input type="radio" name="format" value="landscape-a4"><span><span lang="en">A4 landscape</span><span lang="pt">A4 paisagem</span></span></label>
+            <label class="tick"><input type="radio" name="format" value="portrait-20x25"><span><span lang="en">20 × 25 cm portrait</span><span lang="pt">20 × 25 cm retrato</span></span></label>
+          </div>
+        </fieldset>
+        <fieldset class="field finish">
+          <legend class="caps"><span lang="en">Finish</span><span lang="pt">Acabamento</span></legend>
+          <div class="ticks">
+            <label class="tick"><input type="radio" name="style" value="pocket" checked>
+              <span>Pocket<small lang="en">Full bleed, up to 2 photos a page</small><small lang="pt">Sangrado, até 2 fotos por página</small></span></label>
+            <label class="tick"><input type="radio" name="style" value="scrapbook">
+              <span>Scrapbook<small lang="en">Paper margins, more photos a page</small><small lang="pt">Margens de papel, mais fotos por página</small></span></label>
+          </div>
+        </fieldset>
+      </div>
+      <div class="stub">
+        <div>
+          <span class="caps"><span lang="en">Claim stub · run this in the revela folder</span><span lang="pt">Canhoto · rode isto na pasta do revela</span></span>
+          <code class="cmd" id="cmd" aria-live="polite">./revela make "Beach 2026"</code>
+        </div>
+        <div class="actions">
+          <button class="btn" type="button" id="copy">
+            <svg viewBox="0 0 20 20" aria-hidden="true"><rect x="6.5" y="6.5" width="10" height="11" rx="1.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M13 4V3.5A1.5 1.5 0 0 0 11.5 2h-7A1.5 1.5 0 0 0 3 3.5v9A1.5 1.5 0 0 0 4.5 14H5" fill="none" stroke="currentColor" stroke-width="2"/></svg>
+            <span data-copy><span lang="en">Copy command</span><span lang="pt">Copiar comando</span></span>
+          </button>
+          <a class="btn ghost" href="https://github.com/lorransr/revela">
+            <span lang="en">Get revela on GitHub</span><span lang="pt">Baixe o revela no GitHub</span>
+            <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10h11M11 5l5 5-5 5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </a>
+        </div>
+        <p class="agent">
+          <span lang="en">Or ask your coding agent: “Make a book from the album Beach 2026.” It runs the same command.</span>
+          <span lang="pt">Ou peça ao seu agente de código: “Faz um livro do álbum Praia 2026.” Ele roda o mesmo comando.</span>
+        </p>
+      </div>
+    </form>
+  </div>
+</div>
+
+<section class="book" id="book">
+  <div class="wrap">
+    <h2><span lang="en">It picks the good ones and lays them out like an album.</span><span lang="pt">Ele escolhe as boas e monta como um álbum.</span></h2>
+    <p class="lede">
+      <span lang="en">A thousand phone photos are not a book. revela reads every photo on your computer, drops the repeats and the misses, and puts the rest on spreads with a rhythm: a big photo, then a quiet page, never the same spread twice in a row.</span>
+      <span lang="pt">Mil fotos de celular não são um livro. O revela lê cada foto no seu computador, tira as repetidas e as que não deram certo, e põe o resto em spreads com ritmo: uma foto grande, depois uma página calma, nunca o mesmo spread duas vezes seguidas.</span>
+    </p>
+    <div class="book-grid">
+      <figure style="margin:0">
+        <div class="spread">
+          <img src="photos/picnic.webp" alt="" width="1400" height="934" loading="lazy">
+          <div class="page-r">
+            <img src="photos/kite.webp" alt="" width="1400" height="934" loading="lazy">
+            <img src="photos/seashore.webp" alt="" width="1400" height="934" loading="lazy">
+          </div>
+        </div>
+        <figcaption class="slug">
+          <span lang="en">Example spread, Pocket finish. Stock photos from Unsplash.</span>
+          <span lang="pt">Spread de exemplo, acabamento Pocket. Fotos de banco de imagens do Unsplash.</span>
+        </figcaption>
+      </figure>
+      <aside class="slip" aria-label="Example processing slip">
+        <h3><span><span lang="en">Lab slip</span><span lang="pt">Ficha do lab</span></span><span><span lang="en">Example</span><span lang="pt">Exemplo</span></span></h3>
+        <dl>
+          <div><dt lang="en">Photos in the album</dt><dt lang="pt">Fotos no álbum</dt><dd>842</dd></div>
+          <div><dt lang="en">Near-duplicates out</dt><dt lang="pt">Quase iguais, fora</dt><dd>297</dd></div>
+          <div><dt lang="en">Blurry or dark out</dt><dt lang="pt">Tremidas ou escuras, fora</dt><dd>64</dd></div>
+          <div><dt lang="en">Hearts kept</dt><dt lang="pt">Favoritas mantidas</dt><dd>31</dd></div>
+          <div><dt lang="en">In the book</dt><dt lang="pt">No livro</dt><dd>118</dd></div>
+          <div class="total"><dt lang="en">Uploaded</dt><dt lang="pt">Enviado</dt><dd><span lang="en">0 bytes</span><span lang="pt">0 bytes</span></dd></div>
+        </dl>
+        <p><span lang="en">Sample numbers. Your album gives its own.</span><span lang="pt">Números de exemplo. Seu álbum dá os dele.</span></p>
+      </aside>
+    </div>
+    <div class="rules">
+      <p><b lang="en">One of each moment</b><b lang="pt">Uma de cada momento</b>
+        <span lang="en">From a burst of near-identical shots, it keeps the sharpest.</span><span lang="pt">De uma sequência de fotos quase iguais, fica a mais nítida.</span></p>
+      <p><b lang="en">Your hearts win</b><b lang="pt">Seus corações mandam</b>
+        <span lang="en">A heart in the iPhone Photos app keeps that photo in the book.</span><span lang="pt">Um coração no app Fotos do iPhone garante a foto no livro.</span></p>
+      <p><b lang="en">You have the last word</b><b lang="pt">A última palavra é sua</b>
+        <span lang="en">On the review page you take photos out or put them back, and revela never undoes your choice.</span><span lang="pt">Na página de revisão você tira ou devolve fotos, e o revela nunca desfaz a sua escolha.</span></p>
+    </div>
+  </div>
+</section>
+
+<section class="steps" id="how">
+  <div class="wrap">
+    <h2><span lang="en">Develop it at home, in four commands.</span><span lang="pt">Revele em casa, em quatro comandos.</span></h2>
+    <p class="lede"><span lang="en">Or skip the commands and ask your coding agent. The repo tells it what to do.</span><span lang="pt">Ou pule os comandos e peça ao seu agente de código. O repositório diz a ele o que fazer.</span></p>
+    <ol>
+      <li><h3 lang="en">Log in to iCloud</h3><h3 lang="pt">Entre no iCloud</h3>
+        <p lang="en">Apple login and two-factor code, once. The download talks only to Apple.</p><p lang="pt">Login da Apple e código de dois fatores, uma vez. O download fala só com a Apple.</p>
+        <code>./revela login</code></li>
+      <li><h3 lang="en">Make the book</h3><h3 lang="pt">Monte o livro</h3>
+        <p lang="en">It downloads the album, scores the photos, picks them and lays them out.</p><p lang="pt">Ele baixa o álbum, pontua as fotos, escolhe e diagrama.</p>
+        <code lang="en">./revela make "Beach 2026"</code><code lang="pt">./revela make "Praia 2026"</code></li>
+      <li><h3 lang="en">Review it</h3><h3 lang="pt">Revise</h3>
+        <p lang="en">Open the review page, take photos out or put them back, press “Rebuild book”.</p><p lang="pt">Abra a página de revisão, tire ou devolva fotos, aperte “Rebuild book”.</p>
+        <code>http://127.0.0.1:8765</code></li>
+      <li><h3 lang="en">Take it to print</h3><h3 lang="pt">Leve para imprimir</h3>
+        <p lang="en">One JPEG per spread and a book.pdf at 300 DPI with 3 mm bleed, for any print shop.</p><p lang="pt">Um JPEG por spread e um book.pdf em 300 DPI com 3 mm de sangria, para qualquer gráfica.</p>
+        <code lang="en">./revela release "Beach 2026"</code><code lang="pt">./revela release "Praia 2026"</code></li>
+    </ol>
+    <p class="needs">
+      <span lang="en">You need Docker, a terminal and an iCloud album. revela makes no photo cover: the book is made for a plain linen cover and a layflat binding at the print shop.</span>
+      <span lang="pt">Você precisa de Docker, um terminal e um álbum do iCloud. O revela não faz capa com foto: o livro é feito para capa de linho lisa e encadernação layflat na gráfica.</span>
+    </p>
+  </div>
+</section>
+
+<section class="agent-s" id="agent">
+  <div class="wrap">
+    <div>
+      <h2><span lang="en">Bring your agent. It works on the book, not on your photos.</span><span lang="pt">Traga seu agente. Ele trabalha no livro, não nas suas fotos.</span></h2>
+      <p class="lede"><span lang="en">Ask Claude Code, Cursor or Codex for changes in plain words: a smaller book, fewer photos, the scrapbook finish. The agent runs revela and reads what comes back as text.</span><span lang="pt">Peça ao Claude Code, ao Cursor ou ao Codex mudanças em palavras simples: um livro menor, menos fotos, o acabamento scrapbook. O agente roda o revela e lê o que volta como texto.</span></p>
+      <ul>
+        <li><b lang="en">It sees counts and reasons</b><b lang="pt">Ele vê contagens e motivos</b>
+          <span lang="en">The summary, the scores and the picks are text files. That is all the agent needs.</span><span lang="pt">O resumo, as notas e as escolhas são arquivos de texto. É tudo de que o agente precisa.</span></li>
+        <li><b lang="en">It is told never to open a photo</b><b lang="pt">Ele é instruído a nunca abrir uma foto</b>
+          <span lang="en">AGENTS.md says it in its first line: whatever an agent opens goes to its model provider.</span><span lang="pt">O AGENTS.md diz isso na primeira linha: o que um agente abre vai para o provedor do modelo.</span></li>
+        <li><b lang="en">The photo folder is locked</b><b lang="pt">A pasta de fotos tem trava</b>
+          <span lang="en">Claude Code, Cursor and Codex each get a lock on it, set in the repo.</span><span lang="pt">Claude Code, Cursor e Codex têm cada um uma trava nela, configurada no repositório.</span></li>
+      </ul>
+      <p class="limit"><span lang="en">Each lock has a gap, for example a shell command. The README says where each one stops.</span><span lang="pt">Cada trava tem uma brecha, por exemplo um comando de shell. O README diz onde cada uma para.</span></p>
+    </div>
+    <figure class="talk" style="margin:0">
+      <span class="who caps" lang="en">You</span><span class="who caps" lang="pt">Você</span>
+      <p><q lang="en">Make a 25×25 book from Beach 2026, with fewer photos.</q><q lang="pt">Faz um livro 25×25 do álbum Praia 2026, com menos fotos.</q></p>
+      <span class="who ag caps" lang="en">Agent</span><span class="who ag caps" lang="pt">Agente</span>
+<pre lang="en"><span class="c">$ ./revela make "Beach 2026" --format square-25 --spreads 14</span>
+Beach 2026: 842 photos, 96 in the book, 14 spreads (square-25, pocket), 12 heroes.
+Left out: 625 similar, 64 blurry, 27 eyes closed, 21 too dark, 9 crying.
+Review: http://127.0.0.1:8765/a/beach-2026</pre><pre lang="pt"><span class="c">$ ./revela make "Praia 2026" --format square-25 --spreads 14</span>
+Praia 2026: 842 photos, 96 in the book, 14 spreads (square-25, pocket), 12 heroes.
+Left out: 625 similar, 64 blurry, 27 eyes closed, 21 too dark, 9 crying.
+Review: http://127.0.0.1:8765/a/praia-2026</pre>
+      <figcaption class="note"><span lang="en">Example run. The agent reads these lines, not the pictures.</span><span lang="pt">Exemplo. O agente lê estas linhas, não as fotos.</span></figcaption>
+    </figure>
+  </div>
+</section>
+
+<section class="sealed" id="sealed">
+  <div class="flapbox" aria-hidden="true">
+    <div class="flap"></div>
+    <div class="seal"><b>0</b><span lang="en">bytes uploaded</span><span lang="pt">bytes enviados</span></div>
+  </div>
+  <div class="wrap">
+    <h2><span lang="en">Sealed. Your photos stay in the house.</span><span lang="pt">Lacrado. Suas fotos ficam em casa.</span></h2>
+    <p class="lede"><span lang="en">A photobook site needs your photos on its servers. revela does not have servers.</span><span lang="pt">Um site de fotolivro precisa das suas fotos nos servidores dele. O revela não tem servidores.</span></p>
+    <ul class="facts">
+      <li><b lang="en">Only the download has network</b><b lang="pt">Só o download tem rede</b>
+        <p lang="en">The sync step talks to Apple and to nothing else.</p><p lang="pt">A etapa de sync fala com a Apple e com mais nada.</p></li>
+      <li><b lang="en">The models run offline</b><b lang="pt">Os modelos rodam sem rede</b>
+        <p lang="en">The scoring models come in when the image is built. Scoring and layout run with no network at all.</p><p lang="pt">Os modelos de pontuação entram quando a imagem é construída. A pontuação e a diagramação rodam sem nenhuma rede.</p></li>
+      <li><b lang="en">The review page is local</b><b lang="pt">A página de revisão é local</b>
+        <p lang="en">It listens on 127.0.0.1 only and loads nothing from outside.</p><p lang="pt">Ela escuta só em 127.0.0.1 e não carrega nada de fora.</p></li>
+      <li><b lang="en">Your login stays with you</b><b lang="pt">Seu login fica com você</b>
+        <p lang="en">The iCloud session lives in a folder on your machine. Do not copy it anywhere else.</p><p lang="pt">A sessão do iCloud fica numa pasta da sua máquina. Não copie ela para outro lugar.</p></li>
+    </ul>
+  </div>
+</section>
+
+<section class="close">
+  <div class="wrap">
+    <h2><span lang="en">The wedding. The first year. The trip. On paper.</span><span lang="pt">O casamento. O primeiro ano. A viagem. No papel.</span></h2>
+    <div class="actions">
+      <a class="btn" href="https://github.com/lorransr/revela"><span lang="en">Get revela on GitHub</span><span lang="pt">Baixe o revela no GitHub</span>
+        <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10h11M11 5l5 5-5 5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+      <a class="btn ghost" href="#order"><span lang="en">Fill the order form</span><span lang="pt">Preencha o pedido</span></a>
+    </div>
+  </div>
+</section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <p><span lang="en">The photos on this page are stock photos from Unsplash, not books made by revela users.</span><span lang="pt">As fotos desta página são de banco de imagens do Unsplash, não de livros feitos por usuários do revela.</span></p>
+    <p>
+      <a href="https://unsplash.com/photos/WJc87MVcDaA">Elvis Bekmanis</a>,
+      <a href="https://unsplash.com/photos/NkNpDBdi6A0">Olivia Anne Snyder</a>,
+      <a href="https://unsplash.com/photos/L4nwL3195U0">Ekaterina Shakharova</a>,
+      <a href="https://unsplash.com/photos/Puhj02KOHrc">Liana Mikah</a>,
+      <a href="https://unsplash.com/photos/lSzARaEMbEU">Klara Kulikova</a>,
+      <a href="https://unsplash.com/photos/SIOdjcYotms">Natalya Zaritskaya</a>.
+    </p>
+  </div>
+</footer>
+
+<script>
+  const html = document.documentElement, form = document.getElementById("order"), album = form.album, cmd = document.getElementById("cmd");
+  const sample = { en: "Beach 2026", pt: "Praia 2026" };
+  let edited = false;
+
+  function write() {
+    const name = album.value.trim() || sample[html.lang];
+    const parts = [`./revela make "${name.replace(/(["\\$`])/g, "\\$1")}"`];
+    if (form.format.value !== "square-30") parts.push(`--format ${form.format.value}`);
+    if (form.style.value !== "pocket") parts.push(`--style ${form.style.value}`);
+    cmd.textContent = parts.join(" ");
+  }
+  function setLang(l) {
+    html.lang = l;
+    if (!edited) album.value = sample[l];
+    document.title = l === "pt" ? "revela · suas fotos reveladas num livro, em casa" : "revela · your photos, developed into a book at home";
+    write();
+  }
+  document.querySelectorAll(".lang button").forEach(b => b.onclick = () => { localStorage.setItem("lang", b.dataset.set); setLang(b.dataset.set); });
+  album.addEventListener("input", () => { edited = true; write(); });
+  form.addEventListener("change", write);
+  document.getElementById("copy").onclick = async () => {
+    const label = document.querySelector("[data-copy]"), before = label.innerHTML;
+    try {
+      await navigator.clipboard.writeText(cmd.textContent);
+      label.innerHTML = '<span lang="en">Copied</span><span lang="pt">Copiado</span>';
+    } catch {
+      getSelection().selectAllChildren(cmd);
+      label.innerHTML = '<span lang="en">Press ⌘C to copy</span><span lang="pt">Aperte ⌘C para copiar</span>';
+    }
+    setTimeout(() => label.innerHTML = before, 1800);
+  };
+  setLang(html.lang);
+</script>
+</body>
+</html>
