@@ -1,9 +1,22 @@
 <!doctype html>
 <html lang="en">
 <meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
 <title>revela</title>
-<body style="font: 16px system-ui, sans-serif; margin: 48px">
-<h1 style="font-size: 20px">Books</h1>
-{% for b in books %}<p><a href="/a/{{ b }}">{{ b }}</a></p>{% else %}<p>No book yet. Ask your agent for one, or run <code>./revela make "Album name"</code>.</p>{% endfor %}
-</body>
+<style>
+  @font-face { font-family: "Archivo"; font-weight: 100 900; src: url("/static/fonts/archivo-latin.woff2") format("woff2"); }
+  body { margin: 0; min-height: 100vh; font: 16px/1.45 "Archivo", system-ui, sans-serif; color: #1b1a17; background: #f2b705; border-top: 14px solid #b5221a; }
+  main { max-width: 720px; margin: 0 auto; padding: 56px 24px; }
+  .mark { margin: 0; font-weight: 900; font-size: 64px; line-height: .9; letter-spacing: -.045em; color: #b5221a; }
+  ul { list-style: none; padding: 0; margin: 40px 0 0; border-top: 2px solid #1b1a17; }
+  li a { display: block; padding: 14px 0; border-bottom: 2px solid #1b1a17; font-size: 22px; font-weight: 800; color: inherit; text-decoration: none; }
+  li a:hover { color: #b5221a; }
+  :focus-visible { outline: 3px solid #1b1a17; outline-offset: 3px; }
+  code { background: #fbfbf8; padding: 2px 6px; }
+</style>
+<main>
+  <h1 class="mark">revela</h1>
+  {% if books %}<ul>{% for b in books %}<li><a href="/a/{{ b }}">{{ b }}</a></li>{% endfor %}</ul>
+  {% else %}<p>No book yet. Ask your agent for one, or run <code>./revela make "Album name"</code>.</p>{% endif %}
+</main>
 </html>

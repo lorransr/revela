@@ -4,3 +4,5 @@ test-data/
 .claude/*
 !.claude/settings.json
 __pycache__/
+.impeccable/fixture/albums/
+.impeccable/fixture/stock/

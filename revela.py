@@ -114,15 +114,18 @@ def review(a):
     import uvicorn
     from fastapi import FastAPI, Request, Response
     from fastapi.responses import FileResponse, RedirectResponse
+    from fastapi.staticfiles import StaticFiles
     from fastapi.templating import Jinja2Templates
     from PIL import Image, ImageOps
     from starlette.middleware.trustedhost import TrustedHostMiddleware
 
-    templates = Jinja2Templates(Path(__file__).resolve().parent / "templates")
+    here = Path(__file__).resolve().parent
+    templates = Jinja2Templates(here / "templates")
     lock = threading.Lock()
     app = FastAPI()
     # Blocks DNS rebinding: an outside site cannot read the photos through the browser.
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=["127.0.0.1", "localhost"])
+    app.mount("/static", StaticFiles(directory=here / "static"), name="static")
 
     def album(s):
         d = ALBUMS / s
