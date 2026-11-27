@@ -9,7 +9,7 @@ web
 ## Stack
 
 - App: the review page is a FastAPI + Jinja2 template (`templates/review.html`), served on `127.0.0.1` only.
-- Landing page: static HTML/CSS in `site/`, for GitHub Pages. No framework. English by default, Portuguese when the browser asks for `pt`.
+- Landing page: static HTML/CSS in `docs/`, for GitHub Pages. No framework. English by default, Portuguese when the browser asks for `pt`.
 
 ## Users
 
