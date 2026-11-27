@@ -4,24 +4,24 @@ import sys
 
 from PIL import Image, ImageFilter, ImageOps, ImageStat
 
-LAPLACE = ImageFilter.Kernel((3, 3), [0, 1, 0, 1, -4, 1, 0, 1, 0], scale=1, offset=128)
+_LAPLACE = ImageFilter.Kernel((3, 3), [0, 1, 0, 1, -4, 1, 0, 1, 0], scale=1, offset=128)
 # CLIP tells a cry from a funny face better than the face mesh. The first prompt is the one we test for.
-MOODS = ["a photo of a crying child", "a photo of a child making a funny face",
+_MOODS = ["a photo of a crying child", "a photo of a child making a funny face",
          "a photo of a smiling child", "a photo of a calm child"]
 
 
-def sharpness(gray, box=None):
+def _sharpness(gray, box=None):
     """Laplacian variance of the face, or of the sharpest block: a blurred background is not a blurred photo."""
     w, h = gray.size
     if box:
         crop = gray.crop((box[0] * w, box[1] * h, box[2] * w, box[3] * h))
         if min(crop.size) >= 32:
-            return ImageStat.Stat(crop.filter(LAPLACE)).var[0]
+            return ImageStat.Stat(crop.filter(_LAPLACE)).var[0]
     blocks = [gray.crop((x * w // 4, y * h // 4, (x + 1) * w // 4, (y + 1) * h // 4)) for x in range(4) for y in range(4)]
-    return max(ImageStat.Stat(b.filter(LAPLACE)).var[0] for b in blocks)
+    return max(ImageStat.Stat(b.filter(_LAPLACE)).var[0] for b in blocks)
 
 
-class Scorer:
+class _Scorer:
     def __init__(self):
         import mediapipe as mp
         import open_clip
@@ -37,7 +37,7 @@ class Scorer:
         self.head = torch.nn.Linear(512, 1)
         self.head.load_state_dict(torch.load("/models/aesthetic.pth", map_location="cpu"))
         with torch.no_grad():
-            t = self.clip.encode_text(open_clip.get_tokenizer("ViT-B-32")(MOODS))
+            t = self.clip.encode_text(open_clip.get_tokenizer("ViT-B-32")(_MOODS))
             self.moods = t / t.norm(dim=-1, keepdim=True)
 
     def __call__(self, path):
@@ -64,20 +64,19 @@ class Scorer:
             aes = self.head(e).item()
             moods = (100 * e @ self.moods.T).softmax(dim=-1)[0].tolist()
         return {"w": im.width, "h": im.height, "faces": faces,
-                "sharp": round(sharpness(gray, faces[0]["box"] if faces else None), 1),
+                "sharp": round(_sharpness(gray, faces[0]["box"] if faces else None), 1),
                 "mean": round(ImageStat.Stat(gray).mean[0], 1),
                 "aes": round(aes, 3), "cry": round(moods[0], 3),
                 "emb": [round(v, 4) for v in e[0].tolist()]}
 
 
 def score_all(paths, cache):
-    """paths: {id: Path}. cache: {id: scores}. Scores only the new or changed photos."""
+    """paths: {id: Path}. Adds the scores of the new or changed photos to cache: {id: scores}."""
     todo = {i: p for i, p in paths.items() if cache.get(i, {}).get("t") != p.stat().st_mtime}
     if todo:
-        scorer = Scorer()
+        scorer = _Scorer()
         for n, (i, p) in enumerate(todo.items(), 1):
             cache[i] = {"t": p.stat().st_mtime, **scorer(p)}
             if n % 25 == 0 or n == len(todo):
                 print(f"{n}/{len(todo)} photos scored", file=sys.stderr, flush=True)
         scorer.faces.close()
-    return {i: cache[i] for i in paths}

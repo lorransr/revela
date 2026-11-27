@@ -12,7 +12,7 @@ case "${1:-}" in -*|"") fetch "$@"; exit ;; esac
 
 album=$1
 shift
-dir=/data/albums/$(python3 -c 'import re, sys; print(re.sub(r"[^a-z0-9]+", "-", sys.argv[1].lower()).strip("-"))' "$album")
+dir=/data/albums/$(PYTHONPATH=/app python3 -c 'import sys, revela; print(revela.slug(sys.argv[1]))' "$album")
 mkdir -p "$dir/photos"
 fetch --directory "$dir/icloud" --album "$album" --folder-structure "{:%Y-%m-%d}" "$@"
 

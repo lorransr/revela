@@ -7,9 +7,7 @@
 """
 import argparse
 import json
-import math
 import re
-import statistics
 import sys
 import threading
 from collections import Counter
@@ -18,6 +16,7 @@ from pathlib import Path
 from typing import Literal
 
 import layout
+import pick
 
 DATA = Path("/data")
 ALBUMS = DATA / "albums"
@@ -55,89 +54,14 @@ def reason_kind(why):
     return why.split(" ")[0] if why.startswith("similar") else why
 
 
-def pick(d, scores, style, spreads):
-    """Auto picks: no defects, the best photo of each scene, people first. The user's picks always win."""
-    picks = load(d, "picks.json", {})
-    favs = set((d / "favorites.txt").read_text().split()) if (d / "favorites.txt").exists() else set()
-    for i in scores:
-        if short(i) in favs and picks.get(i, {}).get("by") != "user":
-            picks[i] = {"pick": "in", "by": "user", "why": "favorite"}
-    ids = list(scores)
-    med = statistics.median(s["sharp"] for s in scores.values()) or 1
-
-    def defect(s):
-        if s["mean"] < 35:  # before sharpness: a dark photo also has little contrast
-            return "too dark"
-        if s["sharp"] < 0.25 * med:
-            return "blurry"
-        if s["faces"] and s["faces"][0]["blink"] > 0.5:
-            return "eyes closed"
-        # ponytail: CLIP prompt, not calibrated; tune the threshold with real albums.
-        if s["faces"] and s["cry"] > 0.5:
-            return "crying"
-        return None
-
-    q = {i: s["aes"] + (s["faces"][0]["smile"] + 0.5 if s["faces"] else 0) for i, s in scores.items()}
-    scenes = []
-    for prev, i in zip([None] + ids, ids):
-        a, b = scores[i], scores.get(prev)
-        if b and a["t"] - b["t"] <= 120 and sum(x * y for x, y in zip(a["emb"], b["emb"])) >= 0.9:
-            scenes[-1].append(i)
-        else:
-            scenes.append([i])
-    auto = {}
-    for scene in scenes:
-        ok = [i for i in scene if not defect(scores[i])]
-        best = max(ok, key=q.get) if ok else None
-        for i in scene:
-            why = defect(scores[i])
-            auto[i] = ("out", why) if why else ("in", "") if i == best else ("out", f"similar to {short(best)}")
-    plain = statistics.quantiles([s["aes"] for s in scores.values()], n=4)[2] if len(scores) > 1 else 0
-    for i, (p, _) in auto.items():
-        if p == "in" and not scores[i]["faces"] and scores[i]["aes"] < plain:
-            auto[i] = ("out", "no people, not striking")
-
-    final = {i: (picks[i]["pick"], picks[i]["why"]) if picks.get(i, {}).get("by") == "user" else auto[i] for i in ids}
-    per = layout.STYLES[style]["per_spread"]
-    lo, hi = (spreads, spreads) if spreads else (10, 40)
-    lo_n, hi_n = round(lo * per), round(hi * per)
-    kept = [i for i in ids if final[i][0] == "in"]
-    if len(kept) > hi_n:  # too many: cut the weakest auto picks, but keep every day in the book
-        days = Counter(i.split("/")[0] for i in kept)
-        for i in sorted((i for i in kept if picks.get(i, {}).get("by") != "user"), key=q.get):
-            if len(kept) <= hi_n:
-                break
-            if days[i.split("/")[0]] > 1:
-                days[i.split("/")[0]] -= 1
-                kept.remove(i)
-                final[i] = ("out", f"cut to fit {hi} spreads")
-    if len(kept) < lo_n:  # too few: bring back the best of the similar and plain ones
-        back = [i for i in ids if final[i][0] == "out" and picks.get(i, {}).get("by") != "user"
-                and final[i][1].startswith(("similar", "no people"))]
-        for i in sorted(back, key=q.get, reverse=True)[:lo_n - len(kept)]:
-            final[i] = ("in", "")
-        kept = [i for i in ids if final[i][0] == "in"]
-
-    # One hero about every 4 spreads, the best photo of its stretch, and at least one per day.
-    heroes, chunk = set(), max(3, round(4 * per))
-    for day in dict.fromkeys(i.split("/")[0] for i in kept):
-        run = [i for i in kept if i.startswith(day + "/")]
-        for k in range(0, len(run), chunk):
-            part = run[k:k + chunk]
-            if len(part) >= 3:
-                heroes.add(max(part, key=lambda i: (bool(scores[i]["faces"]), q[i])))
-
-    for i in ids:
-        if picks.get(i, {}).get("by") != "user":
-            picks[i] = {"pick": final[i][0], "by": "auto", "why": final[i][1]}
-        picks[i]["hero"] = i in heroes
+def build(d, fmt, style, spreads):
+    cache, favs = load(d, "scores.json", {}), d / "favorites.txt"
+    scores = {i: cache[i] for i in photos(d) if i in cache}
+    favs = set(favs.read_text().split()) if favs.exists() else set()
+    picks = pick.choose(scores, load(d, "picks.json", {}), favs, layout.STYLES[style]["per_spread"], spreads)
     save(d, "picks.json", picks)
-    return [{"id": i, "w": scores[i]["w"], "h": scores[i]["h"], "faces": [f["box"] for f in scores[i]["faces"]],
-             "hero": i in heroes} for i in kept]
-
-
-def build(d, scores, fmt, style, spreads):
-    book = layout.layout(pick(d, scores, style, spreads), fmt, style)
+    book = layout.layout([{"id": i, "w": s["w"], "h": s["h"], "faces": [f["box"] for f in s["faces"]],
+                           "hero": picks[i]["hero"]} for i, s in scores.items() if picks[i]["pick"] == "in"], fmt, style)
     book["target_spreads"] = spreads
     save(d, "book.json", book)
     return book
@@ -171,9 +95,9 @@ def make(a):
     if not ps:
         sys.exit(f"No photos in {d / 'photos'}. Run the sync first.")
     cache = load(d, "scores.json", {})
-    scores = score_all(ps, cache)
+    score_all(ps, cache)
     save(d, "scores.json", cache)
-    summary(d, a.album, build(d, scores, a.format, a.style, a.spreads))
+    summary(d, a.album, build(d, a.format, a.style, a.spreads))
 
 
 def release(a):
@@ -245,9 +169,8 @@ def review(a):
         if not d:
             return Response(status_code=404)
         with lock:
-            book, scores = load(d, "book.json"), load(d, "scores.json", {})
-            ps = photos(d)
-            build(d, {i: scores[i] for i in ps if i in scores}, book["format"], book["style"], book.get("target_spreads"))
+            book = load(d, "book.json")
+            build(d, book["format"], book["style"], book.get("target_spreads"))
         return Response(status_code=204)
 
     @app.get("/a/{s}/book.pdf")
@@ -277,9 +200,8 @@ def review(a):
 
 def book_format(v):
     try:
-        w, h = layout.page_size(v)
-        assert 50 <= w <= 600 and 50 <= h <= 600
-    except (ValueError, AssertionError):
+        layout.page_size(v)
+    except ValueError:
         raise argparse.ArgumentTypeError(f"use one of {', '.join(layout.FORMATS)} or WIDTHxHEIGHT in mm, like 210x280")
     return v
 

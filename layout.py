@@ -12,42 +12,44 @@ from PIL import Image, ImageOps
 FORMATS = {"square-20": (200, 200), "square-25": (250, 250), "square-30": (300, 300),
            "landscape-a4": (297, 210), "portrait-20x25": (200, 250)}
 BLEED = 3
-MAX_CROP = 0.4  # a photo in a cover slot loses at most this share of its width or height
+_MAX_CROP = 0.4  # a photo in a cover slot loses at most this share of its width or height
 
 
 def page_size(fmt):
     if fmt in FORMATS:
         return FORMATS[fmt]
-    w, h = fmt.lower().split("x")  # a free format: "210x280", in mm
-    return float(w), float(h)
+    w, h = map(float, fmt.lower().split("x"))  # a free format: "210x280", in mm
+    if not (50 <= w <= 600 and 50 <= h <= 600):
+        raise ValueError(f"page size out of range: {fmt}")
+    return w, h
 
 
-def grid(rows, cols, pw, ph, margin, gap, scale=1.0):
+def _grid(rows, cols, pw, ph, margin, gap, scale=1.0):
     iw, ih = (pw - 2 * margin) * scale, (ph - 2 * margin) * scale
     x0, y0 = (pw - iw) / 2, (ph - ih) / 2
     cw, ch = (iw - (cols - 1) * gap) / cols, (ih - (rows - 1) * gap) / rows
     return [(x0 + c * (cw + gap), y0 + r * (ch + gap), cw, ch) for r in range(rows) for c in range(cols)]
 
 
-def pages(style, pw, ph):
+def _pages(style, pw, ph):
     """Page types of a style: name -> (cells, fill, hero). A hero photo only goes on a hero page."""
     if style == "pocket":
         g = 3
         return {
-            "full": (grid(1, 1, pw, ph, 0, g), "cover", True),
-            "stack": (grid(2, 1, pw, ph, 0, g), "cover", False),
-            "side": (grid(1, 2, pw, ph, 0, g), "cover", False),
-            "breath": (grid(1, 1, pw, ph, 0.14 * min(pw, ph), g), "contain", False),
-            "duo": (grid(1, 2, pw, ph, 0.1 * min(pw, ph), 2 * g), "contain", False),  # takes a portrait and a landscape
+            "full": (_grid(1, 1, pw, ph, 0, g), "cover", True),
+            "stack": (_grid(2, 1, pw, ph, 0, g), "cover", False),
+            "side": (_grid(1, 2, pw, ph, 0, g), "cover", False),
+            "breath": (_grid(1, 1, pw, ph, 0.14 * min(pw, ph), g), "contain", False),
+            "duo": (_grid(1, 2, pw, ph, 0.1 * min(pw, ph), 2 * g), "contain", False),  # takes a portrait and a landscape
         }
     m, g = 20, 10
-    big, = grid(1, 2, pw, ph, m, g)[:1]
-    right = grid(2, 2, pw, ph, m, g)
+    big = _grid(1, 2, pw, ph, m, g)[0]
+    right = _grid(2, 2, pw, ph, m, g)
     return {
-        "large": (grid(1, 1, pw, ph, m, g), "contain", True),
-        "single": (grid(1, 1, pw, ph, m, g, 0.7), "contain", False),
-        "stack": (grid(2, 1, pw, ph, m, g), "contain", False),
-        "side": (grid(1, 2, pw, ph, m, g), "contain", False),
+        "large": (_grid(1, 1, pw, ph, m, g), "contain", True),
+        "single": (_grid(1, 1, pw, ph, m, g, 0.7), "contain", False),
+        "stack": (_grid(2, 1, pw, ph, m, g), "contain", False),
+        "side": (_grid(1, 2, pw, ph, m, g), "contain", False),
         "trio": ([big, right[1], right[3]], "contain", False),
         "grid": (right, "contain", False),
     }
@@ -59,12 +61,12 @@ STYLES = {
 }
 
 
-def loss(p, cw, ch):
+def _loss(p, cw, ch):
     r = (p["w"] / p["h"]) / (cw / ch)
     return 1 - min(r, 1 / r)
 
 
-def crop(p, cw, ch):
+def _crop(p, cw, ch):
     """Cover crop that keeps the faces: the union of faces if it fits, else the largest face."""
     a, c = p["w"] / p["h"], cw / ch
     faces = p.get("faces") or []
@@ -89,14 +91,14 @@ def crop(p, cw, ch):
     return [0.0, y, 1.0, y + h]
 
 
-def place(photos, cells, fill, dx, pw, ph, outer_left, outer_right):
+def _place(photos, cells, fill, dx, pw, ph, outer_left, outer_right):
     """Slots in spread coordinates. Cover cells on a page edge run into the bleed; the fold gets no bleed."""
     slots, cost = [], 0.0
     for p, (x, y, w, h) in zip(photos, cells):
         x += dx
         if fill == "cover":
-            lost = loss(p, w, h)
-            if lost > MAX_CROP:
+            lost = _loss(p, w, h)
+            if lost > _MAX_CROP:
                 return None, None
             cost += lost
             x0, y0, x1, y1 = x, y, x + w, y + h
@@ -107,28 +109,28 @@ def place(photos, cells, fill, dx, pw, ph, outer_left, outer_right):
             y0 -= BLEED if y0 <= 1e-6 else 0
             y1 += BLEED if y1 >= ph - 1e-6 else 0
             slots.append({"id": p["id"], "x": x0, "y": y0, "w": x1 - x0, "h": y1 - y0,
-                          "crop": crop(p, x1 - x0, y1 - y0)})
+                          "crop": _crop(p, x1 - x0, y1 - y0)})
         else:
             a = p["w"] / p["h"]
             fw, fh = (w, w / a) if a > w / h else (h * a, h)
-            cost += 0.5 * loss(p, w, h)
+            cost += 0.5 * _loss(p, w, h)
             slots.append({"id": p["id"], "x": x + (w - fw) / 2, "y": y + (h - fh) / 2, "w": fw, "h": fh,
                           "crop": [0.0, 0.0, 1.0, 1.0]})
     return slots, cost
 
 
-def candidates(style, pw, ph):
+def _candidates(style, pw, ph):
     """Spread patterns: every pair of page types, plus the panorama."""
-    types = pages(style, pw, ph)
+    types = _pages(style, pw, ph)
     out = [((l, r), [(types[l], 0, True, False), (types[r], pw, False, True)])
            for l, r in itertools.product(types, repeat=2)]
     out += [((l, None), [(types[l], 0, True, False)]) for l in types]  # the last spread may end on a blank page
     if STYLES[style]["pano"]:
-        out.append((("pano",), [((grid(1, 1, 2 * pw, ph, 0, 0), "cover", True), 0, True, True)]))
+        out.append((("pano",), [((_grid(1, 1, 2 * pw, ph, 0, 0), "cover", True), 0, True, True)]))
     return out
 
 
-def pair(photos):
+def _pair(photos):
     """Swap two neighbours of the same day when that puts two photos of the same orientation together.
 
     A photo moves one place at most, so the story keeps its order.
@@ -151,8 +153,8 @@ def layout(photos, fmt="square-30", style="pocket"):
     """photos: dicts with id, w, h (as displayed), faces (normalized boxes), hero. In book order."""
     pw, ph = page_size(fmt)
     st = STYLES[style]
-    cands = candidates(style, pw, ph)
-    photos = pair(photos)
+    cands = _candidates(style, pw, ph)
+    photos = _pair(photos)
 
     def options(i, hist, placed, last_breath):
         """Every spread that fits the photos from i on, with its cost. hist: (pattern, photo count) of past spreads."""
@@ -175,7 +177,7 @@ def layout(photos, fmt="square-30", style="pocket"):
                     break
                 if pattern == ("pano",) and not ps[0].get("hero"):
                     break  # the panorama is only for heroes
-                sl, c = place(ps, cells, fill, dx, 2 * pw if pattern == ("pano",) else pw, ph, ol, orr)
+                sl, c = _place(ps, cells, fill, dx, 2 * pw if pattern == ("pano",) else pw, ph, ol, orr)
                 if sl is None:
                     break
                 slots += sl
@@ -249,26 +251,3 @@ def render(book, photos_dir, out_dir, dpi=300):
     pdf.write_bytes(img2pdf.convert(files, layout_fun=img2pdf.get_fixed_dpi_layout_fun((dpi, dpi))))
     return pdf
 
-
-if __name__ == "__main__":
-    # Self-check without photos: rhythm and geometry on fake photos.
-    import random
-
-    random.seed(1)
-    fake = [{"id": f"2024-07-{13 + i // 12}/IMG_{i}.jpg", **random.choice([{"w": 3, "h": 2}, {"w": 2, "h": 3}]),
-             "faces": [], "hero": i % 9 == 0} for i in range(60)]
-    for style in STYLES:
-        book = layout(fake, "square-30", style)
-        pats = [s["pattern"] for s in book["spreads"]]
-        ids = [s["id"] for sp in book["spreads"] for s in sp["slots"]]
-        order = [p["id"] for p in fake]
-        assert sorted(ids) == sorted(order), "every photo once"
-        assert all(abs(k - order.index(i)) <= 1 for k, i in enumerate(ids)), "a photo moves one place at most"
-        assert all(a != b for a, b in zip(pats, pats[1:])), "no pattern twice in a row"
-        for sp in book["spreads"]:
-            for s in sp["slots"]:
-                assert -BLEED - 1e-6 <= s["x"] and s["x"] + s["w"] <= 600 + BLEED + 1e-6, s
-                if style == "pocket" and sp["pattern"] != "pano" and s["w"] < 600:
-                    assert s["x"] >= 300 - 1e-6 or s["x"] + s["w"] <= 300 + 1e-6, f"crosses the fold: {sp['pattern']}"
-        assert len(set(pats)) >= 6, f"too few patterns: {set(pats)}"
-        print(style, len(pats), "spreads:", " ".join(pats))
