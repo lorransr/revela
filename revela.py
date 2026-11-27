@@ -17,6 +17,7 @@ from typing import Literal
 
 import layout
 import pick
+from color import SRGB_PROFILE, open_srgb
 
 DATA = Path("/data")
 ALBUMS = DATA / "albums"
@@ -120,7 +121,6 @@ def review(a):
     from fastapi.responses import FileResponse, RedirectResponse
     from fastapi.staticfiles import StaticFiles
     from fastapi.templating import Jinja2Templates
-    from PIL import Image, ImageOps
     from starlette.background import BackgroundTask
     from starlette.middleware.trustedhost import TrustedHostMiddleware
 
@@ -229,12 +229,10 @@ def review(a):
         if not re.fullmatch(r"[a-z0-9-]+", s) or not p.is_relative_to(root) or not p.is_file():
             return Response(status_code=404)
         size = min(max(size, 100), 2000)
-        with Image.open(p) as im:
-            im.draft("RGB", (size, size))
-            img = ImageOps.exif_transpose(im).convert("RGB")
+        img = open_srgb(p, size)
         img.thumbnail((size, size))
         buf = BytesIO()
-        img.save(buf, "JPEG", quality=85)
+        img.save(buf, "JPEG", quality=85, icc_profile=SRGB_PROFILE)
         return Response(buf.getvalue(), media_type="image/jpeg", headers={"Cache-Control": "max-age=3600"})
 
     print(f"Open {URL} in the browser. Ctrl+C to stop.", flush=True)

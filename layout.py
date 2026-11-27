@@ -7,7 +7,9 @@ no pattern twice in a row, a calm spread after a busy one, a breathing page now 
 import itertools
 from pathlib import Path
 
-from PIL import Image, ImageOps
+from PIL import Image
+
+from color import SRGB_PROFILE, open_srgb
 
 FORMATS = {"square-20": (200, 200), "square-25": (250, 250), "square-30": (300, 300),
            "landscape-a4": (297, 210), "portrait-20x25": (200, 250)}
@@ -239,13 +241,11 @@ def render(book, photos_dir, out_dir, dpi=300):
             x1, y1 = px(s["x"] + s["w"] + b), px(s["y"] + s["h"] + b)
             cx0, cy0, cx1, cy1 = s["crop"]
             need = round(max((x1 - x0) / (cx1 - cx0), (y1 - y0) / (cy1 - cy0)))
-            with Image.open(photos_dir / s["id"]) as im:
-                im.draft("RGB", (need, need))  # JPEG decodes already reduced, but never below what the slot needs
-                im = ImageOps.exif_transpose(im).convert("RGB")
+            im = open_srgb(photos_dir / s["id"], need)
             box = (cx0 * im.width, cy0 * im.height, cx1 * im.width, cy1 * im.height)
             canvas.paste(im.resize((x1 - x0, y1 - y0), Image.LANCZOS, box=box), (x0, y0))
         f = out_dir / f"spread-{n:02}.jpg"
-        canvas.save(f, quality=92, dpi=(dpi, dpi))
+        canvas.save(f, quality=92, dpi=(dpi, dpi), icc_profile=SRGB_PROFILE)
         files.append(str(f))
     pdf = out_dir / "book.pdf"
     pdf.write_bytes(img2pdf.convert(files, layout_fun=img2pdf.get_fixed_dpi_layout_fun((dpi, dpi))))

@@ -24,6 +24,8 @@ On the review page, remove a photo, add one that revela left out, and rebuild th
 
 A heart on a photo in the iPhone Photos app keeps that photo in the book.
 
+The review images, print JPEGs, and PDF embed an sRGB profile. Photos with a usable ICC profile are converted to sRGB; untagged RGB photos keep their pixel values.
+
 ## Privacy
 
 - The `sync` service is the only one with network, and it only talks to Apple. The models come in at build time, and `revela` runs without network.
