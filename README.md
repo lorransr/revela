@@ -18,6 +18,10 @@ cp .env.example .env                       # your iCloud user
 `make` takes `--format` (`square-20`, `square-25`, `square-30`, `landscape-a4`, `portrait-20x25`, or `WIDTHxHEIGHT` in mm),
 `--style` (`pocket`: full bleed, at most 2 photos a page; `scrapbook`: cream paper, wide margins) and `--spreads`.
 
+On the review page, remove a photo, add one that revela left out, and rebuild the book:
+
+![The review page: a photo goes out, a left-out photo goes in, and the book rebuilds](site/review.gif)
+
 A heart on a photo in the iPhone Photos app keeps that photo in the book.
 
 ## Privacy
