@@ -22,4 +22,5 @@ RUN mkdir -p /models \
 COPY sync.sh /usr/local/bin/revela-sync
 COPY *.py /app/
 COPY templates /app/templates
+COPY static /app/static
 RUN ln -s /app/revela.py /usr/local/bin/revela

@@ -1,0 +1,327 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-27T16:10:26+00:00",
+  "title": "Design System: revela",
+  "extensions": {
+    "colorMeta": {
+      "envelope-yellow": {
+        "role": "neutral",
+        "displayName": "Envelope Yellow",
+        "tonalRamp": [
+          "#3c3111",
+          "#705915",
+          "#ab8512",
+          "#d99a00",
+          "#f2b705",
+          "#f0c33d",
+          "#ecdfb6",
+          "#f8f5ed"
+        ]
+      },
+      "envelope-back": {
+        "role": "neutral",
+        "displayName": "Envelope Back",
+        "tonalRamp": [
+          "#3c3010",
+          "#725613",
+          "#ae800f",
+          "#d99a00",
+          "#f4be39",
+          "#edcb78",
+          "#edddb5",
+          "#f8f5ec"
+        ]
+      },
+      "lab-red": {
+        "role": "primary",
+        "displayName": "Lab Red",
+        "tonalRamp": [
+          "#371716",
+          "#66231f",
+          "#9a2923",
+          "#b5221a",
+          "#dc5851",
+          "#de8b87",
+          "#e6bebc",
+          "#f7eeee"
+        ]
+      },
+      "press-black": {
+        "role": "neutral",
+        "displayName": "Press Black",
+        "tonalRamp": [
+          "#1b1a17",
+          "#3d3b36",
+          "#5c5a55",
+          "#7d7b76",
+          "#a9a7a1",
+          "#d6d4cf",
+          "#e9e8e4",
+          "#fbfbf8"
+        ]
+      },
+      "ink-soft": {
+        "role": "neutral",
+        "displayName": "Ink Soft",
+        "tonalRamp": [
+          "#1b1a17",
+          "#2c2821",
+          "#3d3524",
+          "#73664a",
+          "#ae9f7e",
+          "#c1b8a4",
+          "#d8d4ca",
+          "#f4f3f1"
+        ]
+      },
+      "print-paper": {
+        "role": "neutral",
+        "displayName": "Print Paper",
+        "tonalRamp": [
+          "#1b1a17",
+          "#3d3b36",
+          "#5c5a55",
+          "#7d7b76",
+          "#a9a7a1",
+          "#d6d4cf",
+          "#e9e8e4",
+          "#fbfbf8"
+        ]
+      },
+      "desk": {
+        "role": "neutral",
+        "displayName": "Desk",
+        "tonalRamp": [
+          "#1b1a17",
+          "#3d3b36",
+          "#5c5a55",
+          "#7d7b76",
+          "#a9a7a1",
+          "#d6d4cf",
+          "#e9e8e4",
+          "#fbfbf8"
+        ]
+      },
+      "muted": {
+        "role": "neutral",
+        "displayName": "Muted",
+        "tonalRamp": [
+          "#1b1a17",
+          "#3d3b36",
+          "#5c5a55",
+          "#7d7b76",
+          "#a9a7a1",
+          "#d6d4cf",
+          "#e9e8e4",
+          "#fbfbf8"
+        ]
+      },
+      "hairline": {
+        "role": "neutral",
+        "displayName": "Hairline",
+        "tonalRamp": [
+          "#1b1a17",
+          "#3d3b36",
+          "#5c5a55",
+          "#7d7b76",
+          "#a9a7a1",
+          "#d6d4cf",
+          "#e9e8e4",
+          "#fbfbf8"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "mark": {
+        "displayName": "Mark",
+        "purpose": "The lowercase word revela, lab red, only."
+      },
+      "display": {
+        "displayName": "Display",
+        "purpose": "Section headings, max 16ch."
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Landing h1, Narrow uppercase, max 24ch."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Landing text; 16px under 640px."
+      },
+      "body-app": {
+        "displayName": "Body (app)",
+        "purpose": "Review page and app index."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Uppercase form language: nav, legends, chips, captions. 12.5px in the app."
+      },
+      "command": {
+        "displayName": "Command",
+        "purpose": "Shell commands only."
+      }
+    },
+    "shadows": [
+      {
+        "name": "print",
+        "value": "0 2px 3px rgb(0 0 0 / .18), 0 10px 24px rgb(60 40 0 / .22)",
+        "purpose": "Loose prints and the slip."
+      },
+      {
+        "name": "spread",
+        "value": "0 2px 4px rgb(0 0 0 / .14), 0 24px 48px rgb(70 45 0 / .28)",
+        "purpose": "Book spread on the landing."
+      },
+      {
+        "name": "spread-app",
+        "value": "0 1px 2px rgb(0 0 0 / .1), 0 12px 30px rgb(0 0 0 / .12)",
+        "purpose": "Spread on the grey desk."
+      },
+      {
+        "name": "front-panel",
+        "value": "0 -6px 14px rgb(80 50 0 / .28)",
+        "purpose": "Front panel lying over the prints."
+      },
+      {
+        "name": "button",
+        "value": "0 1px 1px rgb(0 0 0 / .2), 0 4px 10px rgb(120 20 0 / .22)",
+        "purpose": "Primary button at rest."
+      },
+      {
+        "name": "button-hover",
+        "value": "0 2px 2px rgb(0 0 0 / .2), 0 8px 18px rgb(120 20 0 / .28)",
+        "purpose": "Primary button lifted."
+      }
+    ],
+    "motion": [
+      {
+        "name": "ease",
+        "value": "cubic-bezier(.16, 1, .3, 1)",
+        "purpose": "All state transitions: button lift, X draw, chip reveal."
+      },
+      {
+        "name": "x-draw",
+        "value": "clip-path .35s var(--ease)",
+        "purpose": "Red X drawing into a tick box."
+      },
+      {
+        "name": "prints-rise",
+        "value": "scroll-driven translate 0 -70px over 360–480px of scroll",
+        "purpose": "Prints rise out of the envelope; only with animation-timeline and no reduced-motion."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "app-stack",
+        "value": "900px"
+      },
+      {
+        "name": "form-two-col",
+        "value": "980px"
+      },
+      {
+        "name": "phone",
+        "value": "640px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The one action per view.",
+      "html": "<button class=\"ds-btn\">Copy command</button>",
+      "css": ".ds-btn{display:inline-flex;align-items:center;gap:10px;font:700 17px/1 Archivo,sans-serif;padding:15px 22px;border-radius:3px;border:2px solid #b5221a;background:#b5221a;color:#fff;cursor:pointer;box-shadow:0 1px 1px rgb(0 0 0/.2),0 4px 10px rgb(120 20 0/.22);transition:translate .2s cubic-bezier(.16,1,.3,1),box-shadow .2s cubic-bezier(.16,1,.3,1)}.ds-btn:hover{translate:0 -1px;box-shadow:0 2px 2px rgb(0 0 0/.2),0 8px 18px rgb(120 20 0/.28)}.ds-btn:active{translate:0 1px}.ds-btn:focus-visible{outline:3px solid #1b1a17;outline-offset:3px}"
+    },
+    {
+      "name": "Ghost Button",
+      "kind": "button",
+      "refersTo": "button-ghost",
+      "description": "Secondary action beside the primary.",
+      "html": "<a class=\"ds-btn-ghost\" href=\"#\">Get revela on GitHub</a>",
+      "css": ".ds-btn-ghost{display:inline-flex;font:700 17px/1 Archivo,sans-serif;padding:15px 22px;border-radius:3px;border:2px solid #1b1a17;color:#1b1a17;text-decoration:none}.ds-btn-ghost:hover{translate:0 -1px}.ds-btn-ghost:focus-visible{outline:3px solid #1b1a17;outline-offset:3px}"
+    },
+    {
+      "name": "Ruled Field",
+      "kind": "input",
+      "refersTo": "input-ruled",
+      "description": "Text input as a ruled line on the order form.",
+      "html": "<label class=\"ds-label\">Album in iCloud</label><input class=\"ds-ruled\" value=\"Beach 2026\">",
+      "css": ".ds-label{display:block;margin-bottom:12px;font:700 14px 'Archivo Narrow',sans-serif;text-transform:uppercase;letter-spacing:.06em}.ds-ruled{width:100%;font:600 22px/1.2 Archivo,sans-serif;color:#1b1a17;background:none;border:0;border-bottom:2px solid #1b1a17;padding:4px 0 6px;border-radius:0}.ds-ruled:focus{outline:none;border-bottom-color:#b5221a}"
+    },
+    {
+      "name": "Tick Box",
+      "kind": "chip",
+      "description": "Square option box ticked by a drawn red X.",
+      "html": "<label class=\"ds-tick\"><input type=\"radio\" name=\"f\" checked>30 × 30 cm</label><label class=\"ds-tick\"><input type=\"radio\" name=\"f\">20 × 20 cm</label>",
+      "css": ".ds-tick{display:inline-flex;align-items:center;gap:9px;margin-right:18px;font:600 17px 'Archivo Narrow',sans-serif;cursor:pointer}.ds-tick input{appearance:none;width:24px;height:24px;margin:0;border:2px solid #1b1a17;background:#fbfbf8;display:grid;place-items:center;cursor:pointer}.ds-tick input::after{content:'';width:26px;height:26px;background:url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 26 26'%3E%3Cpath d='M4 5c6 5 11 10 18 17M21 4C15 10 10 15 5 22' fill='none' stroke='%23b5221a' stroke-width='3.2' stroke-linecap='round'/%3E%3C/svg%3E\") center/contain no-repeat;clip-path:inset(0 100% 0 0);transition:clip-path .35s cubic-bezier(.16,1,.3,1)}.ds-tick input:checked::after{clip-path:inset(0)}.ds-tick input:focus-visible{outline:3px solid #b5221a;outline-offset:2px}"
+    },
+    {
+      "name": "Claim Stub",
+      "kind": "custom",
+      "description": "Perforated stub holding the live command.",
+      "html": "<div class=\"ds-stub\"><code class=\"ds-cmd\">./revela make \"Beach 2026\"</code></div>",
+      "css": ".ds-stub{position:relative;padding:20px;background:#fbfbf8;border:2px solid #1b1a17;border-top-style:dashed}.ds-stub::before,.ds-stub::after{content:'';position:absolute;top:-13px;width:24px;height:24px;border-radius:50%;background:#f2b705;border:2px solid #1b1a17}.ds-stub::before{left:-13px;clip-path:inset(0 0 0 50%)}.ds-stub::after{right:-13px;clip-path:inset(0 50% 0 0)}.ds-cmd{font:500 18px/1.4 ui-monospace,Menlo,monospace}.ds-cmd::before{content:'$ ';color:#b5221a}"
+    },
+    {
+      "name": "App Bar",
+      "kind": "nav",
+      "refersTo": "app-bar",
+      "description": "Review page top bar: the only yellow in the app.",
+      "html": "<header class=\"ds-bar\"><span class=\"ds-mark\">revela</span><b>Beach 2026</b><button class=\"ds-rebuild\">Rebuild book <span>3</span></button></header>",
+      "css": ".ds-bar{display:flex;align-items:center;gap:18px;padding:10px 28px;background:#f2b705;border-bottom:5px solid #b5221a;font:15px Archivo,sans-serif;color:#1b1a17}.ds-mark{font-weight:900;font-size:24px;letter-spacing:-.04em;color:#b5221a}.ds-bar b{font-size:17px;font-weight:800;padding-left:18px;border-left:2px solid #1b1a17}.ds-rebuild{margin-left:auto;display:inline-flex;gap:8px;align-items:center;padding:9px 16px;border:0;border-radius:3px;background:#b5221a;color:#fff;font:700 15px Archivo,sans-serif;cursor:pointer;box-shadow:0 1px 1px rgb(0 0 0/.2),0 3px 8px rgb(120 20 0/.25);transition:translate .2s cubic-bezier(.16,1,.3,1)}.ds-rebuild:hover{translate:0 -1px}.ds-rebuild span{display:inline-grid;place-items:center;min-width:22px;height:22px;padding:0 6px;border-radius:11px;background:#fff;color:#b5221a;font-size:13px}"
+    },
+    {
+      "name": "Print",
+      "kind": "card",
+      "description": "Loose print: white border, tilt, warm shadow.",
+      "html": "<figure class=\"ds-print\"><div></div></figure>",
+      "css": ".ds-print{margin:0;width:200px;padding:9px;background:#fbfbf8;rotate:-2deg;box-shadow:0 2px 3px rgb(0 0 0/.18),0 10px 24px rgb(60 40 0/.22)}.ds-print div{aspect-ratio:3/2;background:#7d7b76}"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Photo-Lab Envelope",
+    "overview": "Every surface is the paper a photo lab hands back: a yellow envelope printed in two inks, a white order form with ruled fields, a perforated claim stub, prints with white borders. Paper objects behave like paper: loose ones tilt and cast soft warm shadows, printed ones lie flat behind a 2px rule.\n\nThe landing page (`site/`) is the full envelope. The app (`templates/`) is the same lab, restrained: a grey desk under the spreads so the photos lead, yellow only in the top bar.",
+    "keyCharacteristics": [
+      "Drenched yellow ground, two inks (lab red, press black), white paper for anything you fill in or hold.",
+      "Archivo 900 for the mark and headings; Archivo Narrow caps for form language.",
+      "2px black rules everywhere; dashed means perforation, dotted means leader.",
+      "Selection is a hand-drawn red X."
+    ],
+    "rules": [
+      {
+        "name": "The Two Inks Rule",
+        "body": "Yellow is printed in red and black only. No third hue, no cream, no gradients beyond the spread gutter shade.",
+        "section": "colors"
+      },
+      {
+        "name": "The Red Is Small Rule",
+        "body": "Red text on yellow is 3.6:1, so it appears only at display scale (the mark, the seal). Smaller red sits on paper.",
+        "section": "colors"
+      },
+      {
+        "name": "The Lowercase Mark Rule",
+        "body": "\"revela\" is always lowercase Archivo 900 in lab red, tracked tight (-0.04 to -0.045em).",
+        "section": "typography"
+      },
+      {
+        "name": "The Loose Paper Rule",
+        "body": "Only loose paper tilts (prints -5° to 2°, slip 1.2°, seal -8°) and casts a shadow. Forms, grids and bands never tilt.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do keep red for the one action per view, the mark and selection marks.",
+      "Do draw rules and borders at 2px press black; use dashed for tear lines only.",
+      "Do self-host every font and image (the page loads nothing from outside).",
+      "Do keep app chrome restrained: desk grey under photos, yellow only in the top bar."
+    ],
+    "donts": [
+      "Don't use a serif, cream ground, or a third accent hue.",
+      "Don't round cards or panels; corners are square except on pressable things.",
+      "Don't tilt or shadow anything printed (forms, grids, bands).",
+      "Don't use red text smaller than display scale on yellow."
+    ]
+  }
+}

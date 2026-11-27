@@ -4,50 +4,85 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>{{ slug }} · revela</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='4' fill='%23f2b705'/%3E%3Crect y='20' width='32' height='5' fill='%23b5221a'/%3E%3C/svg%3E">
 <style>
-  :root { --ink: #1d1d1f; --muted: #6e6e73; --line: #e3e1dc; --accent: #2f5d50; }
+  @font-face { font-family: "Archivo"; font-weight: 100 900; src: url("/static/fonts/archivo-latin.woff2") format("woff2"); unicode-range: U+0000-00FF, U+2000-206F; }
+  @font-face { font-family: "Archivo"; font-weight: 100 900; src: url("/static/fonts/archivo-latin-ext.woff2") format("woff2"); unicode-range: U+0100-02FF, U+1E00-1EFF; }
+  @font-face { font-family: "Archivo Narrow"; font-weight: 400 700; src: url("/static/fonts/archivo-narrow-latin.woff2") format("woff2"); unicode-range: U+0000-00FF, U+2000-206F; }
+  @font-face { font-family: "Archivo Narrow"; font-weight: 400 700; src: url("/static/fonts/archivo-narrow-latin-ext.woff2") format("woff2"); unicode-range: U+0100-02FF, U+1E00-1EFF; }
+  :root { --yellow: #f2b705; --red: #b5221a; --ink: #1b1a17; --muted: #5c5a55; --line: #d6d4cf; --desk: #e9e8e4; --paper: #fbfbf8;
+          --narrow: "Archivo Narrow", "Arial Narrow", sans-serif; --ease: cubic-bezier(.16, 1, .3, 1); }
   * { box-sizing: border-box; }
-  body { margin: 0; font: 15px/1.45 -apple-system, "Segoe UI", system-ui, sans-serif; color: var(--ink); }
+  html { scrollbar-color: #a9a7a1 var(--desk); }
+  body { margin: 0; font: 15px/1.45 "Archivo", system-ui, sans-serif; color: var(--ink); background: var(--desk); }
+  ::selection { background: var(--ink); color: var(--yellow); }
+  :focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
   button { font: inherit; cursor: pointer; border: 0; background: none; color: inherit; padding: 0; }
   img { display: block; }
-  .top { position: sticky; top: 0; z-index: 5; display: flex; align-items: baseline; gap: 16px; padding: 14px 28px;
-         background: rgba(255,255,255,.92); backdrop-filter: blur(12px); border-bottom: 1px solid var(--line); }
-  .top h1 { font-size: 17px; font-weight: 600; margin: 0; }
-  .top .muted, .top a { color: var(--muted); font-size: 13px; }
-  .rebuild { margin-left: auto; padding: 7px 16px; border-radius: 8px; background: var(--accent); color: #fff; font-weight: 500; }
-  .rebuild:disabled { background: #d8d6d1; cursor: default; }
+  .caps { font-family: var(--narrow); font-weight: 700; text-transform: uppercase; letter-spacing: .06em; font-size: 12.5px; }
+
+  .top { position: sticky; top: 0; z-index: 5; display: flex; align-items: center; gap: 18px; padding: 10px 28px;
+         background: var(--yellow); border-bottom: 5px solid var(--red); }
+  .top .mark { font-weight: 900; font-size: 24px; letter-spacing: -.04em; color: var(--red); text-decoration: none; line-height: 1; }
+  .top h1 { font-size: 17px; font-weight: 800; margin: 0; padding-left: 18px; border-left: 2px solid var(--ink); }
+  .top .facts { color: var(--ink); }
+  .top .pdf { color: var(--ink); text-underline-offset: .2em; }
+  .rebuild { margin-left: auto; display: inline-flex; align-items: center; gap: 8px; padding: 9px 16px; border-radius: 3px; background: var(--red); color: #fff; font-weight: 700;
+             box-shadow: 0 1px 1px rgb(0 0 0 / .2), 0 3px 8px rgb(120 20 0 / .25); transition: translate .2s var(--ease); }
+  .rebuild:hover:not(:disabled) { translate: 0 -1px; }
+  .rebuild:disabled { background: none; color: var(--ink); box-shadow: inset 0 0 0 2px rgb(27 26 23 / .35); cursor: default; }
+  .rebuild .n { display: inline-grid; place-items: center; min-width: 22px; height: 22px; padding: 0 6px; border-radius: 11px; background: #fff; color: var(--red); font-size: 13px; font-variant-numeric: tabular-nums; }
+  body.busy { cursor: progress; }
+  body.busy .rebuild { opacity: .75; pointer-events: none; }
+
   .cols { display: grid; grid-template-columns: 1fr 340px; }
-  main { padding: 36px 40px 80px; background: #f6f6f4; }
-  figure { margin: 0 auto 40px; max-width: 1100px; }
-  figcaption { margin-top: 8px; font-size: 12px; color: var(--muted); text-align: center; }
-  .spread { position: relative; overflow: hidden; box-shadow: 0 1px 2px rgba(0,0,0,.08), 0 10px 28px rgba(0,0,0,.08); }
+  main { padding: 36px 40px 80px; }
+  figure { margin: 0 auto 44px; max-width: 1100px; }
+  figcaption { margin-top: 10px; text-align: center; color: var(--muted); }
+  .spread { position: relative; overflow: hidden; box-shadow: 0 1px 2px rgb(0 0 0 / .1), 0 12px 30px rgb(0 0 0 / .12); }
   .spread::after { content: ""; position: absolute; top: 0; bottom: 0; left: calc(50% - 14px); width: 28px; pointer-events: none;
-                   background: linear-gradient(90deg, transparent, rgba(0,0,0,.07) 50%, transparent); }
-  .slot { position: absolute; overflow: hidden; cursor: pointer; }
-  .slot img { position: absolute; max-width: none; }
-  .slot.removed img { opacity: .12; filter: grayscale(1); }
-  .slot.removed::after { content: "Removed · click to undo"; position: absolute; inset: 0; display: grid; place-items: center;
-                         font-size: 12px; color: var(--muted); }
-  .slot:not(.removed):hover::after { content: "Remove"; position: absolute; top: 8px; right: 8px; font-size: 12px;
-      padding: 3px 10px; border-radius: 99px; background: rgba(0,0,0,.65); color: #fff; }
-  aside { position: sticky; top: 53px; height: calc(100vh - 53px); overflow: auto; padding: 20px 22px 80px; border-left: 1px solid var(--line); }
-  aside h3 { margin: 0 0 4px; font-size: 15px; }
-  aside h4 { margin: 22px 0 8px; font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
-  .row { display: grid; grid-template-columns: 64px 1fr auto; gap: 12px; align-items: center; padding: 6px 0; }
-  .row img { width: 64px; height: 48px; object-fit: cover; border-radius: 3px; }
-  .row b { display: block; font-size: 13px; font-weight: 500; }
+                   background: linear-gradient(90deg, transparent, rgb(0 0 0 / .08) 50%, transparent); }
+  .slot { position: absolute; overflow: hidden; }
+  .slot img { position: absolute; max-width: none; transition: opacity .25s, filter .25s; }
+  .slot .chip { position: absolute; top: 8px; right: 8px; padding: 4px 10px; border-radius: 3px; background: var(--ink); color: var(--paper); opacity: 0; translate: 0 -3px;
+                transition: opacity .15s, translate .2s var(--ease); }
+  .slot:hover .chip, .slot:focus-visible .chip { opacity: 1; translate: 0 0; }
+  .slot:focus-visible { outline-offset: -3px; }
+  .slot.removed { background: var(--paper); }
+  .slot.removed img { opacity: .14; filter: grayscale(1); }
+  .slot.removed::before { content: ""; position: absolute; inset: 18%; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 26 26' preserveAspectRatio='none'%3E%3Cpath d='M4 5c6 5 11 10 18 17M21 4C15 10 10 15 5 22' fill='none' stroke='%23b5221a' stroke-width='4' stroke-linecap='round' vector-effect='non-scaling-stroke'/%3E%3C/svg%3E") center / contain no-repeat; }
+  .slot.removed .chip { opacity: 1; top: auto; right: auto; bottom: 10px; left: 50%; translate: -50% 0; background: var(--paper); color: var(--ink); box-shadow: inset 0 0 0 2px var(--ink); white-space: nowrap; }
+
+  aside { position: sticky; top: 66px; height: calc(100vh - 66px); overflow: auto; padding: 22px 22px 80px; background: var(--paper); border-left: 2px solid var(--ink); }
+  aside h2 { margin: 0 0 4px; font-size: 20px; font-weight: 800; letter-spacing: -.01em; }
+  aside .hint { margin: 0; color: var(--muted); font-size: 13px; }
+  aside h3 { margin: 24px 0 6px; padding-bottom: 6px; border-bottom: 2px solid var(--ink); display: flex; justify-content: space-between; }
+  aside h3 span:last-child { color: var(--red); font-variant-numeric: tabular-nums; }
+  .row { display: grid; grid-template-columns: 70px 1fr auto; gap: 12px; align-items: center; padding: 7px 0; border-bottom: 1px solid var(--line); }
+  .row img { width: 70px; height: 52px; object-fit: cover; border: 4px solid #fff; box-shadow: 0 1px 2px rgb(0 0 0 / .25); }
+  .row b { display: block; font-size: 13px; font-weight: 600; overflow-wrap: anywhere; }
   .row small { color: var(--muted); font-size: 12px; }
-  .row button { font-size: 13px; padding: 4px 12px; border-radius: 99px; border: 1px solid var(--line); }
-  .row button:hover { border-color: var(--accent); color: var(--accent); }
+  .row button { font-family: var(--narrow); font-weight: 700; font-size: 14px; padding: 5px 12px; border-radius: 3px; box-shadow: inset 0 0 0 2px var(--ink); }
+  .row button:hover { background: var(--ink); color: var(--paper); }
+  .empty { margin-top: 18px; color: var(--muted); }
+
+  @media (max-width: 900px) {
+    .cols { grid-template-columns: 1fr; }
+    aside { position: static; height: auto; border-left: 0; border-top: 2px solid var(--ink); }
+    main { padding: 24px 16px 40px; }
+    .top { flex-wrap: wrap; padding: 10px 16px; gap: 6px 14px; }
+    .top .facts { order: 3; width: 100%; }
+  }
 </style>
 <body>
 <header class="top">
+  <a class="mark" href="/">revela</a>
   <h1>{{ slug }}</h1>
-  <span class="muted">{{ n_in }} photos · {{ book.spreads | length }} spreads · {{ book.format }} · {{ book.style }}</span>
-  {% if pdf %}<a href="/a/{{ slug }}/book.pdf" target="_blank">PDF</a>{% endif %}
+  <span class="facts caps">{{ n_in }} photos · {{ book.spreads | length }} spreads · {{ book.format }} · {{ book.style }}</span>
+  {% if pdf %}<a class="pdf caps" href="/a/{{ slug }}/book.pdf" target="_blank">PDF</a>{% endif %}
   {% set changes = removed | length + added | length %}
   <button class="rebuild" onclick="post('rebuild')" {% if not changes %}disabled{% endif %}>
-    Rebuild book{% if changes %} · {{ changes }} change{{ "s" if changes > 1 }}{% endif %}</button>
+    {% if changes %}Rebuild book <span class="n" aria-label="{{ changes }} change{{ 's' if changes > 1 }}">{{ changes }}</span>{% else %}No changes{% endif %}</button>
 </header>
 <div class="cols">
 <main>
@@ -56,34 +91,40 @@
     <div class="spread" style="aspect-ratio: {{ 2 * pw }} / {{ ph }}; background: {{ book.paper }}">
     {% for s in sp.slots %}
       {% set cw, ch = s.crop[2] - s.crop[0], s.crop[3] - s.crop[1] %}
-      <div class="slot {{ 'removed' if s.id in removed }}"
+      {% set out = s.id in removed %}
+      <button class="slot {{ 'removed' if out }}" aria-label="{{ ('Put back ' if out else 'Remove ') ~ short(s.id) }}"
            style="left: {{ s.x / (2 * pw) * 100 }}%; top: {{ s.y / ph * 100 }}%; width: {{ s.w / (2 * pw) * 100 }}%; height: {{ s.h / ph * 100 }}%"
-           onclick="post('pick/{{ 'in' if s.id in removed else 'out' }}/{{ s.id | urlencode }}')">
+           onclick="post('pick/{{ 'in' if out else 'out' }}/{{ s.id | urlencode }}')">
         <img src="/img/{{ slug }}/{{ s.id | urlencode }}" alt="" loading="lazy"
              style="left: {{ -s.crop[0] / cw * 100 }}%; top: {{ -s.crop[1] / ch * 100 }}%; width: {{ 100 / cw }}%; height: {{ 100 / ch }}%">
-      </div>
+        <span class="chip caps">{{ 'Removed · put back' if out else 'Remove' }}</span>
+      </button>
     {% endfor %}
     </div>
-    <figcaption>{{ loop.index * 2 - 1 }}–{{ loop.index * 2 }}</figcaption>
+    <figcaption class="caps">{{ loop.index * 2 - 1 }}–{{ loop.index * 2 }}</figcaption>
   </figure>
 {% endfor %}
 </main>
 <aside>
-  <h3>Left out</h3>
+  <h2>Left out</h2>
+  <p class="hint">Photos revela kept out of the book, and why. Add one and press Rebuild book.</p>
   {% macro row(i, note, choice, label) %}
     <div class="row"><img src="/img/{{ slug }}/{{ i | urlencode }}?size=200" alt="" loading="lazy">
       <div><b>{{ short(i) }}</b><small>{{ note }}</small></div>
-      <button onclick="post('pick/{{ choice }}/{{ i | urlencode }}')">{{ label }}</button></div>
+      <button onclick="post('pick/{{ choice }}/{{ i | urlencode }}')" aria-label="{{ label }} {{ short(i) }}">{{ label }}</button></div>
   {% endmacro %}
-  {% if added %}<h4>Added · {{ added | length }}</h4>{% for i in added %}{{ row(i, "goes in on rebuild", "out", "Undo") }}{% endfor %}{% endif %}
+  {% if added %}<h3 class="caps"><span>Added</span><span>{{ added | length }}</span></h3>{% for i in added %}{{ row(i, "goes in on rebuild", "out", "Undo") }}{% endfor %}{% endif %}
   {% for kind, items in groups %}
-    <h4>{{ kind }} · {{ items | length }}</h4>
+    <h3 class="caps"><span>{{ kind }}</span><span>{{ items | length }}</span></h3>
     {% for i, why in items %}{{ row(i, why, "in", "Add") }}{% endfor %}
   {% endfor %}
+  {% if not added and not groups %}<p class="empty">Every photo of the album is in the book.</p>{% endif %}
 </aside>
 </div>
 <script>
   async function post(path) {
+    document.body.classList.add("busy");
+    if (path === "rebuild") document.querySelector(".rebuild").textContent = "Rebuilding…";
     await fetch(`/a/{{ slug }}/${path}`, { method: "POST" });
     location.reload();
   }
